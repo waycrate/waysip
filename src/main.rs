@@ -301,14 +301,15 @@ fn main() {
         let layer = layer_shell.get_layer_surface(
             &wl_surface,
             Some(wloutput),
-            Layer::Top,
+            Layer::Overlay,
             format!("nobody_{index}"),
             &qh,
             (),
         );
-        layer.set_anchor(Anchor::Bottom | Anchor::Right | Anchor::Left | Anchor::Top);
+        layer.set_anchor(Anchor::Top | Anchor::Left | Anchor::Right | Anchor::Bottom);
+        layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
-        layer.set_size(init_w, init_w);
+        layer.set_size(init_w, init_h);
 
         wl_surface.commit(); // so during the init Configure of the shell, a buffer, atleast a buffer is needed.
                              // and if you need to reconfigure it, you need to commit the wl_surface again
