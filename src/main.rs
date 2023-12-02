@@ -276,9 +276,9 @@ fn main() {
 
     event_queue.blocking_dispatch(&mut state).unwrap(); // then make a dispatch
 
-    println!("Hello, world!, {:?}", shm);
-    println!("Hello, world!, {:?}", state); // you will find you get the outputs, but if you do not
-                                            // do the step before, you get empty list
+    // you will find you get the outputs, but if you do not
+    // do the step before, you get empty list
+
     let layer_shell = globals
         .bind::<ZwlrLayerShellV1, _, _>(&qh, 3..=4, ())
         .unwrap();
@@ -341,16 +341,16 @@ fn main() {
 }
 
 fn draw(tmp: &mut File, (buf_x, buf_y): (u32, u32)) {
-    use std::{cmp::min, io::Write};
+    use std::io::Write;
     let mut buf = std::io::BufWriter::new(tmp);
-    for y in 0..buf_y {
-        for x in 0..buf_x {
-            let a = 0xFF;
-            let r = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let g = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let b = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
+    for _ in 0..buf_y {
+        for _ in 0..buf_x {
+            let a = 200 * 0xFF;
+            let r = 0;
+            let g = 0;
+            let b = 0;
 
-            let color = (a << 24) + (r << 16) + (g << 8) + b;
+            let color: u32 = (a << 24) + (r << 16) + (g << 8) + b;
             buf.write_all(&color.to_ne_bytes()).unwrap();
         }
     }
