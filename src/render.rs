@@ -28,7 +28,7 @@ impl LayerSurfaceInfo {
         let start_y = relate_start_y;
 
         cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
-        cairoinfo.set_source_rgba(0.5, 0.5, 0.5, 0.8);
+        cairoinfo.set_source_rgba(0.1, 0.1, 0.1, 0.4);
         cairoinfo.fill().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
