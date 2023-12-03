@@ -108,6 +108,7 @@ impl Default for SecondState {
     }
 }
 
+/// describe the information of the area
 #[derive(Debug)]
 pub struct AreaInfo {
     pub start_x: f64,
@@ -117,11 +118,19 @@ pub struct AreaInfo {
 }
 
 impl AreaInfo {
+    /// provide the width of the area
     pub fn width(&self) -> f64 {
         (self.end_x - self.start_x).abs()
     }
+
+    /// provide the height of the area
     pub fn height(&self) -> f64 {
         (self.end_y - self.start_y).abs()
+    }
+
+    /// caculate the real start position
+    pub fn left_top_point(&self) -> (f64, f64) {
+        (self.start_x.min(self.end_x), (self.start_y.max(self.end_y)))
     }
 }
 
@@ -389,6 +398,7 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
+// get the selected area
 pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;

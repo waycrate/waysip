@@ -4,7 +4,8 @@ use wayland_client::{globals::BindError, DispatchError};
 /// it describe three kind of error
 /// 1. failed when init
 /// 2. failed in queue
-/// 3. failed in shm copy
+/// 3. failed when protocol not supported
+/// 4. when not get the cursor
 #[derive(Error, Debug)]
 pub enum WaySipError {
     #[error("Init Failed")]

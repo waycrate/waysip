@@ -19,14 +19,9 @@ wayland-protocols-wlr = { version = "0.2.0", default-features = false, features 
 	"client",
 ] }
 
-cairo-rs = { version = "0.18.2", features = ["png"] }
+cairo-rs = "0.18.2"
 pango = "0.18.0"
 pangocairo = "0.18.0"
 
-image = { version = "0.24", default-features = false, features = [
-	"jpeg",
-	"png",
-	"pnm",
-] }
 memmap2 = "0.9.0"
 thiserror = "1.0.50"
