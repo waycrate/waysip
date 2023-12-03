@@ -116,6 +116,15 @@ pub struct AreaInfo {
     pub end_y: f64,
 }
 
+impl AreaInfo {
+    pub fn width(&self) -> f64 {
+        (self.end_x - self.start_x).abs()
+    }
+    pub fn height(&self) -> f64 {
+        (self.end_y - self.start_y).abs()
+    }
+}
+
 impl SecondState {
     fn redraw(&mut self) {
         if self.start_pos.is_none() {
