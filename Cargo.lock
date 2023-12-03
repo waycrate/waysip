@@ -299,6 +299,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "libwaysip"
+version = "0.1.0"
+dependencies = [
+ "cairo-rs",
+ "memmap2",
+ "pango",
+ "pangocairo",
+ "tempfile",
+ "thiserror",
+ "wayland-client",
+ "wayland-cursor",
+ "wayland-protocols",
+ "wayland-protocols-wlr",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -787,22 +803,6 @@ dependencies = [
  "dlib",
  "log",
  "pkg-config",
-]
-
-[[package]]
-name = "waysip"
-version = "0.1.0"
-dependencies = [
- "cairo-rs",
- "memmap2",
- "pango",
- "pangocairo",
- "tempfile",
- "thiserror",
- "wayland-client",
- "wayland-cursor",
- "wayland-protocols",
- "wayland-protocols-wlr",
 ]
 
 [[package]]

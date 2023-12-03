@@ -1,4 +1,4 @@
-use waysip::get_area;
+use libwaysip::get_area;
 fn main() {
     println!("{:?}", get_area());
 }
