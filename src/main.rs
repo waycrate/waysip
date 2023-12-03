@@ -53,6 +53,8 @@ struct ZXdgOutputInfo {
     zxdgoutput: zxdg_output_v1::ZxdgOutputV1,
     width: i32,
     height: i32,
+    start_x: i32,
+    start_y: i32,
 }
 
 impl ZXdgOutputInfo {
@@ -61,9 +63,12 @@ impl ZXdgOutputInfo {
             zxdgoutput,
             width: 0,
             height: 0,
+            start_x: 0,
+            start_y: 0,
         }
     }
 }
+
 #[derive(Debug)]
 struct LayerSurfaceInfo {
     layer: ZwlrLayerSurfaceV1,
@@ -71,6 +76,7 @@ struct LayerSurfaceInfo {
     cursor_suface: WlSurface,
     buffer: WlBuffer,
     cursor_buffer: CursorImageBuffer,
+    cairo_t: cairo::Context,
 }
 
 #[derive(Debug)]
@@ -78,7 +84,10 @@ struct SecondState {
     outputs: Vec<wl_output::WlOutput>,
     zxdgoutputs: Vec<ZXdgOutputInfo>,
     running: bool,
-    wl_surface: Vec<LayerSurfaceInfo>,
+    wl_surfaces: Vec<LayerSurfaceInfo>,
+    current_pos: (f64, f64),
+    start_pos: Option<(f64, f64)>,
+    end_pos: Option<(f64, f64)>,
 }
 
 impl Default for SecondState {
@@ -87,7 +96,32 @@ impl Default for SecondState {
             outputs: Vec::new(),
             zxdgoutputs: Vec::new(),
             running: true,
-            wl_surface: Vec::new(),
+            wl_surfaces: Vec::new(),
+            current_pos: (0., 0.),
+            start_pos: None,
+            end_pos: None,
+        }
+    }
+}
+
+impl SecondState {
+    fn redraw(&mut self) {
+        if self.start_pos.is_none() {
+            return;
+        }
+        let (pos_x, pos_y) = self.start_pos.clone().unwrap();
+        for (
+            ZXdgOutputInfo {
+                width,
+                height,
+                start_x,
+                start_y,
+                ..
+            },
+            layershell_info,
+        ) in self.zxdgoutputs.iter().zip(self.wl_surfaces.iter_mut())
+        {
+            layershell_info.redraw((pos_x, pos_y), (*start_x, *start_y), (*width, *height));
         }
     }
 }
@@ -173,40 +207,63 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for SecondState {
 
 impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
     fn event(
-        state: &mut Self,
+        dispatch_state: &mut Self,
         pointer: &wl_pointer::WlPointer,
         event: <wl_pointer::WlPointer as Proxy>::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_pointer::Event::Enter {
-            serial,
-            surface,
-            surface_x: _,
-            surface_y: _,
-        } = event
-        {
-            let Some(LayerSurfaceInfo {
-                cursor_suface,
-                cursor_buffer,
-                ..
-            }) = state
-                .wl_surface
-                .iter()
-                .find(|info| info.wl_surface == surface)
-            else {
-                return;
-            };
-            cursor_suface.attach(Some(&cursor_buffer), 0, 0);
-            let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
-            pointer.set_cursor(
+        match event {
+            wl_pointer::Event::Button { state, .. } => {
+                match state {
+                    WEnum::Value(wl_pointer::ButtonState::Pressed) => {
+                        dispatch_state.start_pos = Some(dispatch_state.current_pos);
+                    }
+                    WEnum::Value(wl_pointer::ButtonState::Released) => {
+                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                    }
+                    _ => {}
+                }
+                dispatch_state.redraw();
+            }
+            wl_pointer::Event::Enter {
                 serial,
-                Some(cursor_suface),
-                hotspot_x as i32,
-                hotspot_y as i32,
-            );
-            cursor_suface.commit();
+                surface,
+                surface_x,
+                surface_y,
+            } => {
+                dispatch_state.current_pos = (surface_x, surface_y);
+                let Some(LayerSurfaceInfo {
+                    cursor_suface,
+                    cursor_buffer,
+                    ..
+                }) = dispatch_state
+                    .wl_surfaces
+                    .iter()
+                    .find(|info| info.wl_surface == surface)
+                else {
+                    return;
+                };
+                cursor_suface.attach(Some(&cursor_buffer), 0, 0);
+                let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
+                pointer.set_cursor(
+                    serial,
+                    Some(cursor_suface),
+                    hotspot_x as i32,
+                    hotspot_y as i32,
+                );
+                cursor_suface.commit();
+                dispatch_state.redraw();
+            }
+            wl_pointer::Event::Motion {
+                surface_x,
+                surface_y,
+                ..
+            } => {
+                dispatch_state.current_pos = (surface_x, surface_y);
+            }
+            _ => {}
         }
     }
 }
@@ -224,7 +281,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for SecondState {
             surface.ack_configure(serial);
             let Some(LayerSurfaceInfo {
                 wl_surface, buffer, ..
-            }) = state.wl_surface.iter().find(|info| info.layer == *surface)
+            }) = state.wl_surfaces.iter().find(|info| info.layer == *surface)
             else {
                 return;
             };
@@ -243,16 +300,23 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for SecondState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let zxdg_output_v1::Event::LogicalSize { width, height } = event {
-            let Some(info) = state
-                .zxdgoutputs
-                .iter_mut()
-                .find(|info| info.zxdgoutput == *proxy)
-            else {
-                return;
-            };
-            info.height = height;
-            info.width = width;
+        let Some(info) = state
+            .zxdgoutputs
+            .iter_mut()
+            .find(|info| info.zxdgoutput == *proxy)
+        else {
+            return;
+        };
+        match event {
+            zxdg_output_v1::Event::LogicalSize { width, height } => {
+                info.height = height;
+                info.width = width;
+            }
+            zxdg_output_v1::Event::LogicalPosition { x, y } => {
+                info.start_x = x;
+                info.start_y = y;
+            }
+            _ => {}
         }
     }
 }
@@ -355,9 +419,8 @@ fn main() {
                              // so because this is just an example, so we just commit it once
                              // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
         let mut file = tempfile::tempfile().unwrap();
-        render::draw_ui(&mut file, (init_w, init_h));
+        let cairo_t = render::draw_ui(&mut file, (init_w, init_h));
         let pool = shm.create_pool(file.as_fd(), (init_w * init_h * 4) as i32, &qh, ());
-
 
         let buffer = pool.create_buffer(
             0,
@@ -370,12 +433,13 @@ fn main() {
         );
 
         let cursor_suface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
-        state.wl_surface.push(LayerSurfaceInfo {
+        state.wl_surfaces.push(LayerSurfaceInfo {
             layer,
             wl_surface,
             cursor_suface,
             buffer,
             cursor_buffer: cursor[0].clone(),
+            cairo_t,
         });
     }
 
