@@ -28,6 +28,8 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{self, Anchor, ZwlrLayerSurfaceV1},
 };
 
+use wayland_cursor::CursorImageBuffer;
+use wayland_cursor::CursorTheme;
 #[derive(Debug)]
 struct BaseState;
 
@@ -64,7 +66,9 @@ impl ZXdgOutputInfo {
 struct LayerSurfaceInfo {
     layer: ZwlrLayerSurfaceV1,
     wl_surface: WlSurface,
+    cursor_suface: WlSurface,
     buffer: WlBuffer,
+    cursor_buffer: CursorImageBuffer,
 }
 
 #[derive(Debug)]
@@ -167,15 +171,40 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for SecondState {
 
 impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
     fn event(
-        _state: &mut Self,
-        _proxy: &wl_pointer::WlPointer,
+        state: &mut Self,
+        pointer: &wl_pointer::WlPointer,
         event: <wl_pointer::WlPointer as Proxy>::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_pointer::Event::Button { .. } = event {
-            //state.set_anchor(Anchor::Bottom);
+        if let wl_pointer::Event::Enter {
+            serial,
+            surface,
+            surface_x: _,
+            surface_y: _,
+        } = event
+        {
+            let Some(LayerSurfaceInfo {
+                cursor_suface,
+                cursor_buffer,
+                ..
+            }) = state
+                .wl_surface
+                .iter()
+                .find(|info| info.wl_surface == surface)
+            else {
+                return;
+            };
+            cursor_suface.attach(Some(&cursor_buffer), 0, 0);
+            let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
+            pointer.set_cursor(
+                serial,
+                Some(cursor_suface),
+                hotspot_x as i32,
+                hotspot_y as i32,
+            );
+            cursor_suface.commit();
         }
     }
 }
@@ -258,6 +287,14 @@ fn main() {
                                                                                     // get WlCompositor
 
     let shm = globals.bind::<WlShm, _, _>(&qh, 1..=1, ()).unwrap();
+
+    let mut cursor_theme = CursorTheme::load(&connection, shm.clone(), 23).unwrap();
+    let mut cursor = cursor_theme.get_cursor("crosshair");
+    if cursor.is_none() {
+        cursor = cursor_theme.get_cursor("left_ptr");
+    }
+    let cursor = cursor.unwrap();
+
     globals.bind::<WlSeat, _, _>(&qh, 1..=1, ()).unwrap();
 
     let _ = connection.display().get_registry(&qh, ()); // so if you want WlOutput, you need to
@@ -328,10 +365,13 @@ fn main() {
             (),
         );
 
+        let cursor_suface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
         state.wl_surface.push(LayerSurfaceInfo {
             layer,
             wl_surface,
+            cursor_suface,
             buffer,
+            cursor_buffer: cursor[0].clone(),
         });
     }
 
