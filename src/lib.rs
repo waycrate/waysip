@@ -378,12 +378,7 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
-fn main() {
-    let info = get_area();
-    println!("{:?}", info);
-}
-
-fn get_area() -> Option<AreaInfo> {
+pub fn get_area() -> Option<AreaInfo> {
     let connection = Connection::connect_to_env().unwrap();
     let (globals, _) = registry_queue_init::<BaseState>(&connection).unwrap(); // We just need the
                                                                                // global, the
