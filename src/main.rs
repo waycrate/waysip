@@ -1,4 +1,6 @@
-use std::{fs::File, os::unix::prelude::AsFd};
+mod render;
+
+use std::os::unix::prelude::AsFd;
 
 use wayland_client::{
     delegate_noop,
@@ -332,7 +334,7 @@ fn main() {
     {
         let wl_surface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
                                                                // we need to create more
-        let (init_w, init_h) = (zwlinfo.width as u32, zwlinfo.height as u32);
+        let (init_w, init_h) = (zwlinfo.width, zwlinfo.height);
         // this example is ok for both xdg_surface and layer_shell
 
         let layer = layer_shell.get_layer_surface(
@@ -346,15 +348,17 @@ fn main() {
         layer.set_anchor(Anchor::Top | Anchor::Left | Anchor::Right | Anchor::Bottom);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
-        layer.set_size(init_w, init_h);
+        layer.set_size(init_w as u32, init_h as u32);
 
         wl_surface.commit(); // so during the init Configure of the shell, a buffer, atleast a buffer is needed.
                              // and if you need to reconfigure it, you need to commit the wl_surface again
                              // so because this is just an example, so we just commit it once
                              // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
         let mut file = tempfile::tempfile().unwrap();
-        draw(&mut file, (init_w, init_h));
+        render::draw_ui(&mut file, (init_w, init_h));
         let pool = shm.create_pool(file.as_fd(), (init_w * init_h * 4) as i32, &qh, ());
+
+
         let buffer = pool.create_buffer(
             0,
             init_w as i32,
@@ -378,21 +382,4 @@ fn main() {
     while state.running {
         event_queue.blocking_dispatch(&mut state).unwrap();
     }
-}
-
-fn draw(tmp: &mut File, (buf_x, buf_y): (u32, u32)) {
-    use std::io::Write;
-    let mut buf = std::io::BufWriter::new(tmp);
-    for _ in 0..buf_y {
-        for _ in 0..buf_x {
-            let a = 200 * 0xFF;
-            let r = 0;
-            let g = 0;
-            let b = 0;
-
-            let color: u32 = (a << 24) + (r << 16) + (g << 8) + b;
-            buf.write_all(&color.to_ne_bytes()).unwrap();
-        }
-    }
-    buf.flush().unwrap();
 }
