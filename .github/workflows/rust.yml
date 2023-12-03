@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install deps
+      run: sudo apt install -y libpango1.0-dev libcairo2-dev
     - name: Build lib
       run: cargo build --verbose
     - name: Run tests for lib
