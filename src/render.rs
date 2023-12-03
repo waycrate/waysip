@@ -4,6 +4,9 @@ use std::fs::File;
 
 use super::LayerSurfaceInfo;
 
+const FONT_FAMILY: &str = "Sans";
+const FONT_SIZE: i32 = 10;
+
 impl LayerSurfaceInfo {
     pub fn redraw(
         &mut self,
@@ -30,6 +33,31 @@ impl LayerSurfaceInfo {
         cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
         cairoinfo.set_source_rgba(0.1, 0.1, 0.1, 0.4);
         cairoinfo.fill().unwrap();
+
+        cairoinfo.set_source_rgb(1_f64, 1_f64, 1_f64);
+
+        let font_size = FONT_SIZE;
+        let pangolayout = pangocairo::create_layout(&cairoinfo);
+        let mut desc = pango::FontDescription::new();
+        desc.set_family(FONT_FAMILY);
+        desc.set_weight(pango::Weight::Normal);
+
+        desc.set_size(font_size * pango::SCALE);
+        pangolayout.set_font_description(Some(&desc));
+
+        let text = format!(
+            "{},{}, {}x{}",
+            start_pos_x as i32,
+            start_pos_y as i32,
+            (endpos_x - start_pos_x) as i32,
+            (endpos_y - start_pos_y) as i32
+        );
+
+        pangolayout.set_text(text.as_str());
+        cairoinfo.save().unwrap();
+        cairoinfo.move_to(relate_end_x + 10., relate_end_y + 10.);
+        pangocairo::show_layout(cairoinfo, &pangolayout);
+        cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
         self.wl_surface.damage(0, 0, width, height);
