@@ -37,7 +37,7 @@ impl LayerSurfaceInfo {
         cairoinfo.set_source_rgb(1_f64, 1_f64, 1_f64);
 
         let font_size = FONT_SIZE;
-        let pangolayout = pangocairo::create_layout(&cairoinfo);
+        let pangolayout = pangocairo::create_layout(cairoinfo);
         let mut desc = pango::FontDescription::new();
         desc.set_family(FONT_FAMILY);
         desc.set_weight(pango::Weight::Normal);

@@ -139,7 +139,7 @@ impl SecondState {
         if self.start_pos.is_none() {
             return;
         }
-        let (pos_x, pos_y) = self.start_pos.clone().unwrap();
+        let (pos_x, pos_y) = self.start_pos.unwrap();
         for (
             ZXdgOutputInfo {
                 width,
@@ -164,8 +164,8 @@ impl SecondState {
         if self.start_pos.is_none() || self.end_pos.is_none() {
             return None;
         }
-        let (start_x, start_y) = self.start_pos.clone().unwrap();
-        let (end_x, end_y) = self.end_pos.clone().unwrap();
+        let (start_x, start_y) = self.start_pos.unwrap();
+        let (end_x, end_y) = self.end_pos.unwrap();
         Some(AreaInfo {
             start_x,
             start_y,
@@ -305,7 +305,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
-                cursor_suface.attach(Some(&cursor_buffer), 0, 0);
+                cursor_suface.attach(Some(cursor_buffer), 0, 0);
                 let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
                 pointer.set_cursor(
                     serial,
@@ -499,13 +499,13 @@ pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
                              // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
         let mut file = tempfile::tempfile().unwrap();
         let cairo_t = render::draw_ui(&mut file, (init_w, init_h));
-        let pool = shm.create_pool(file.as_fd(), (init_w * init_h * 4) as i32, &qh, ());
+        let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());
 
         let buffer = pool.create_buffer(
             0,
-            init_w as i32,
-            init_h as i32,
-            (init_w * 4) as i32,
+            init_w,
+            init_h,
+            init_w * 4,
             wl_shm::Format::Argb8888,
             &qh,
             (),
