@@ -1,7 +1,12 @@
 [package]
 name = "libwaysip"
+description = "lib and tool provide function like slurp"
+authors.workspace = true
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,8 +35,13 @@ thiserror = "1.0.50"
 members = ["./waysip"]
 
 [workspace.package]
+authors = ["Decodertalkers <aakari@tutanota.com>"]
 edition = "2021"
 version = "0.1.0"
+license = "MIT"
+description = "lib provide function like slurp"
+repository = "https://github.com/waycrate/waysip"
+keywords = ["wayland", "wlroots", "slurp"]
 
 [workspace.dependencies]
 libwaysip = { version = "0.1.0", path = "." }
