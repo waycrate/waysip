@@ -229,6 +229,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
                         dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        // if released, this time select is end
+                        dispatch_state.running = false;
                     }
                     _ => {}
                 }
@@ -353,6 +355,7 @@ delegate_noop!(SecondState: ignore WlBuffer); // buffer show the picture
 delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg_toplevel, also the
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
+
 fn main() {
     let connection = Connection::connect_to_env().unwrap();
     let (globals, _) = registry_queue_init::<BaseState>(&connection).unwrap(); // We just need the
