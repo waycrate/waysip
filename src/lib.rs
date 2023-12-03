@@ -1,4 +1,6 @@
+mod error;
 mod render;
+pub use error::WaySipError;
 
 use std::os::unix::prelude::AsFd;
 
@@ -378,58 +380,71 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
-pub fn get_area() -> Option<AreaInfo> {
-    let connection = Connection::connect_to_env().unwrap();
-    let (globals, _) = registry_queue_init::<BaseState>(&connection).unwrap(); // We just need the
-                                                                               // global, the
-                                                                               // event_queue is
-                                                                               // not needed, we
-                                                                               // do not need
-                                                                               // BaseState after
-                                                                               // this anymore
+pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
+    let connection =
+        Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
+    let (globals, _) = registry_queue_init::<BaseState>(&connection)
+        .map_err(|e| WaySipError::InitFailed(e.to_string()))?; // We just need the
+                                                               // global, the
+                                                               // event_queue is
+                                                               // not needed, we
+                                                               // do not need
+                                                               // BaseState after
+                                                               // this anymore
 
     let mut state = SecondState::default();
 
     let mut event_queue = connection.new_event_queue::<SecondState>();
     let qh = event_queue.handle();
 
-    let wmcompositer = globals.bind::<WlCompositor, _, _>(&qh, 1..=5, ()).unwrap(); // so the first
-                                                                                    // thing is to
-                                                                                    // get WlCompositor
+    let wmcompositer = globals
+        .bind::<WlCompositor, _, _>(&qh, 1..=5, ())
+        .map_err(WaySipError::NotSupportedProtocol)?; // so the first
+                                                      // thing is to
+                                                      // get WlCompositor
 
-    let shm = globals.bind::<WlShm, _, _>(&qh, 1..=1, ()).unwrap();
+    let shm = globals
+        .bind::<WlShm, _, _>(&qh, 1..=1, ())
+        .map_err(WaySipError::NotSupportedProtocol)?;
 
-    let mut cursor_theme = CursorTheme::load(&connection, shm.clone(), 23).unwrap();
+    let mut cursor_theme = CursorTheme::load(&connection, shm.clone(), 23)
+        .map_err(|_| WaySipError::NotGetCursorTheme)?;
     let mut cursor = cursor_theme.get_cursor("crosshair");
     if cursor.is_none() {
         cursor = cursor_theme.get_cursor("left_ptr");
     }
-    let cursor = cursor.unwrap();
+    let cursor = cursor.ok_or(WaySipError::NotGetCursorTheme)?;
 
-    globals.bind::<WlSeat, _, _>(&qh, 1..=1, ()).unwrap();
+    globals
+        .bind::<WlSeat, _, _>(&qh, 1..=1, ())
+        .map_err(WaySipError::NotSupportedProtocol)?;
 
     let _ = connection.display().get_registry(&qh, ()); // so if you want WlOutput, you need to
                                                         // register this
 
-    event_queue.blocking_dispatch(&mut state).unwrap(); // then make a dispatch
+    event_queue
+        .blocking_dispatch(&mut state)
+        .map_err(WaySipError::DispatchError)?; // then make a dispatch
 
     let xdg_output_manager = globals
         .bind::<ZxdgOutputManagerV1, _, _>(&qh, 1..=3, ())
-        .unwrap();
+        .map_err(WaySipError::NotSupportedProtocol)?;
 
     for wloutput in state.outputs.iter() {
         let zwloutput = xdg_output_manager.get_xdg_output(wloutput, &qh, ());
         state.zxdgoutputs.push(ZXdgOutputInfo::new(zwloutput));
     }
 
-    event_queue.blocking_dispatch(&mut state).unwrap(); // then make a dispatch
+    event_queue
+        .blocking_dispatch(&mut state)
+        .map_err(WaySipError::DispatchError)?; // then make a dispatch
 
     // you will find you get the outputs, but if you do not
     // do the step before, you get empty list
 
     let layer_shell = globals
         .bind::<ZwlrLayerShellV1, _, _>(&qh, 3..=4, ())
-        .unwrap();
+        .map_err(WaySipError::NotSupportedProtocol)?;
 
     // so it is the same way, to get surface detach to protocol, first get the shell, like wmbase
     // or layer_shell or session-shell, then get `surface` from the wl_surface you get before, and
@@ -489,8 +504,10 @@ pub fn get_area() -> Option<AreaInfo> {
     }
 
     while state.running {
-        event_queue.blocking_dispatch(&mut state).unwrap();
+        event_queue
+            .blocking_dispatch(&mut state)
+            .map_err(WaySipError::DispatchError)?;
     }
 
-    state.area_info()
+    Ok(state.area_info())
 }
