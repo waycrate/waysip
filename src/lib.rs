@@ -398,7 +398,7 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
-// get the selected area
+/// get the selected area
 pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
