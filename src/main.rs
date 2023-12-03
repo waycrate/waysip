@@ -88,6 +88,7 @@ struct SecondState {
     current_pos: (f64, f64),
     start_pos: Option<(f64, f64)>,
     end_pos: Option<(f64, f64)>,
+    current_screen: usize,
 }
 
 impl Default for SecondState {
@@ -100,6 +101,7 @@ impl Default for SecondState {
             current_pos: (0., 0.),
             start_pos: None,
             end_pos: None,
+            current_screen: 0,
         }
     }
 }
@@ -121,7 +123,12 @@ impl SecondState {
             layershell_info,
         ) in self.zxdgoutputs.iter().zip(self.wl_surfaces.iter_mut())
         {
-            layershell_info.redraw((pos_x, pos_y), (*start_x, *start_y), (*width, *height));
+            layershell_info.redraw(
+                (pos_x, pos_y),
+                self.current_pos,
+                (*start_x, *start_y),
+                (*width, *height),
+            );
         }
     }
 }
@@ -233,7 +240,6 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 surface_x,
                 surface_y,
             } => {
-                dispatch_state.current_pos = (surface_x, surface_y);
                 let Some(LayerSurfaceInfo {
                     cursor_suface,
                     cursor_buffer,
@@ -245,6 +251,16 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 else {
                     return;
                 };
+                let current_screen = dispatch_state
+                    .wl_surfaces
+                    .iter()
+                    .position(|info| info.wl_surface == surface)
+                    .unwrap();
+                dispatch_state.current_screen = current_screen;
+                let start_x = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_x;
+                let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
+                dispatch_state.current_pos =
+                    (surface_x + start_x as f64, surface_y + start_y as f64);
                 cursor_suface.attach(Some(&cursor_buffer), 0, 0);
                 let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
                 pointer.set_cursor(
@@ -261,7 +277,11 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 surface_y,
                 ..
             } => {
-                dispatch_state.current_pos = (surface_x, surface_y);
+                let start_x = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_x;
+                let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
+                dispatch_state.current_pos =
+                    (surface_x + start_x as f64, surface_y + start_y as f64);
+                dispatch_state.redraw();
             }
             _ => {}
         }
