@@ -931,6 +931,7 @@ dependencies = [
  "pango",
  "pangocairo",
  "tempfile",
+ "thiserror",
  "wayland-client",
  "wayland-cursor",
  "wayland-protocols",

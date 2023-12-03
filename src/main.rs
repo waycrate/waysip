@@ -106,6 +106,14 @@ impl Default for SecondState {
     }
 }
 
+#[derive(Debug)]
+pub struct AreaInfo {
+    pub start_x: f64,
+    pub start_y: f64,
+    pub end_x: f64,
+    pub end_y: f64,
+}
+
 impl SecondState {
     fn redraw(&mut self) {
         if self.start_pos.is_none() {
@@ -130,6 +138,20 @@ impl SecondState {
                 (*width, *height),
             );
         }
+    }
+
+    fn area_info(&self) -> Option<AreaInfo> {
+        if self.start_pos.is_none() || self.end_pos.is_none() {
+            return None;
+        }
+        let (start_x, start_y) = self.start_pos.clone().unwrap();
+        let (end_x, end_y) = self.end_pos.clone().unwrap();
+        Some(AreaInfo {
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+        })
     }
 }
 
@@ -357,6 +379,11 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
 fn main() {
+    let info = get_area();
+    println!("{:?}", info);
+}
+
+fn get_area() -> Option<AreaInfo> {
     let connection = Connection::connect_to_env().unwrap();
     let (globals, _) = registry_queue_init::<BaseState>(&connection).unwrap(); // We just need the
                                                                                // global, the
@@ -469,4 +496,6 @@ fn main() {
     while state.running {
         event_queue.blocking_dispatch(&mut state).unwrap();
     }
+
+    state.area_info()
 }
