@@ -130,7 +130,7 @@ impl AreaInfo {
 
     /// caculate the real start position
     pub fn left_top_point(&self) -> (f64, f64) {
-        (self.start_x.min(self.end_x), (self.start_y.max(self.end_y)))
+        (self.start_x.min(self.end_x), (self.start_y.min(self.end_y)))
     }
 }
 
