@@ -1,38 +1,6 @@
-[package]
-name = "libwaysip"
-description = "lib and tool provide function like slurp"
-authors.workspace = true
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-keywords.workspace = true
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-tempfile = "3.8.1"
-wayland-client = { version = "0.31.1" }
-wayland-cursor = "0.31.0"
-
-wayland-protocols = { version = "0.31.0", default-features = false, features = [
-	"unstable",
-	"client",
-] }
-
-wayland-protocols-wlr = { version = "0.2.0", default-features = false, features = [
-	"client",
-] }
-
-cairo-rs = "0.18.3"
-pango = "0.18.3"
-pangocairo = "0.18.0"
-
-memmap2 = "0.9.0"
-thiserror = "1.0.50"
-
 [workspace]
-members = ["./waysip"]
+resolver = "2"
+members = ["./waysip", "./libwaysip"]
 
 [workspace.package]
 authors = ["Decodertalkers <aakari@tutanota.com>"]
@@ -44,4 +12,4 @@ repository = "https://github.com/waycrate/waysip"
 keywords = ["wayland", "wlroots", "slurp"]
 
 [workspace.dependencies]
-libwaysip = { version = "0.1.0", path = "." }
+libwaysip = { version = "0.1.0", path = "./libwaysip" }
