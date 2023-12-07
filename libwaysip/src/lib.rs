@@ -426,7 +426,7 @@ pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
         .bind::<WlShm, _, _>(&qh, 1..=1, ())
         .map_err(WaySipError::NotSupportedProtocol)?;
 
-    let mut cursor_theme = CursorTheme::load_or(&connection, shm.clone(), "default", 23)
+    let mut cursor_theme = CursorTheme::load(&connection, shm.clone(), 23)
         .map_err(|_| WaySipError::NotGetCursorTheme)?;
     let mut cursor = cursor_theme.get_cursor("crosshair");
     if cursor.is_none() {
