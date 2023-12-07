@@ -1,6 +1,6 @@
 [package]
 name = "libwaysip"
-description = "lib and tool provide function like slurp"
+description = "Wayland native (zwlr_layer_shell) area selection client lib"
 authors.workspace = true
 version.workspace = true
 edition.workspace = true

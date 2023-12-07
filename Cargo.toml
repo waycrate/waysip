@@ -3,11 +3,14 @@ resolver = "2"
 members = ["./waysip", "./libwaysip"]
 
 [workspace.package]
-authors = ["Decodertalkers <aakari@tutanota.com>"]
+authors = [
+	"Decodertalkers <aakari@tutanota.com>",
+	"Aakash Sen Sharma <aakashsensharma@gmail.com>",
+]
 edition = "2021"
 version = "0.1.0"
 license = "MIT"
-description = "lib provide function like slurp"
+description = "Wayland native (zwlr_layer_shell) area selection client"
 repository = "https://github.com/waycrate/waysip"
 keywords = ["wayland", "wlroots", "slurp"]
 

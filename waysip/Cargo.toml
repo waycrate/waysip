@@ -1,6 +1,6 @@
 [package]
 name = "waysip"
-description = "bin provide function like slurp"
+description = "Wayland native (zwlr_layer_shell) area selection client, like slurp"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
