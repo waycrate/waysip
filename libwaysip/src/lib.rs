@@ -32,6 +32,11 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{self, Anchor, ZwlrLayerSurfaceV1},
 };
 
+use wayland_protocols::wp::cursor_shape::v1::client::{
+    wp_cursor_shape_device_v1::{self, WpCursorShapeDeviceV1},
+    wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
+};
+
 use wayland_cursor::CursorImageBuffer;
 use wayland_cursor::CursorTheme;
 #[derive(Debug)]
@@ -77,7 +82,7 @@ struct LayerSurfaceInfo {
     wl_surface: WlSurface,
     cursor_suface: WlSurface,
     buffer: WlBuffer,
-    cursor_buffer: CursorImageBuffer,
+    cursor_buffer: Option<CursorImageBuffer>,
     cairo_t: cairo::Context,
 }
 
@@ -91,6 +96,7 @@ struct SecondState {
     start_pos: Option<(f64, f64)>,
     end_pos: Option<(f64, f64)>,
     current_screen: usize,
+    cursor_manager: Option<WpCursorShapeManagerV1>,
 }
 
 impl Default for SecondState {
@@ -104,6 +110,7 @@ impl Default for SecondState {
             start_pos: None,
             end_pos: None,
             current_screen: 0,
+            cursor_manager: None,
         }
     }
 }
@@ -261,7 +268,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
         event: <wl_pointer::WlPointer as Proxy>::Event,
         _data: &(),
         _conn: &Connection,
-        _qhandle: &wayland_client::QueueHandle<Self>,
+        qh: &wayland_client::QueueHandle<Self>,
     ) {
         match event {
             wl_pointer::Event::Button { state, .. } => {
@@ -305,16 +312,24 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
-                cursor_suface.attach(Some(cursor_buffer), 0, 0);
-                let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
-                pointer.set_cursor(
-                    serial,
-                    Some(cursor_suface),
-                    hotspot_x as i32,
-                    hotspot_y as i32,
-                );
-                cursor_suface.commit();
-                dispatch_state.redraw();
+
+                if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
+                    let device = cursor_manager.get_pointer(pointer, qh, ());
+                    device.set_shape(serial, wp_cursor_shape_device_v1::Shape::Crosshair);
+                    device.destroy();
+                } else {
+                    let cursor_buffer = cursor_buffer.as_ref().unwrap();
+                    cursor_suface.attach(Some(cursor_buffer), 0, 0);
+                    let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
+                    pointer.set_cursor(
+                        serial,
+                        Some(cursor_suface),
+                        hotspot_x as i32,
+                        hotspot_y as i32,
+                    );
+                    cursor_suface.commit();
+                    dispatch_state.redraw();
+                }
             }
             wl_pointer::Event::Motion {
                 surface_x,
@@ -398,7 +413,19 @@ delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg
                                                       // ext-session-shell
 delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
+delegate_noop!(SecondState: ignore WpCursorShapeManagerV1);
+delegate_noop!(SecondState: ignore WpCursorShapeDeviceV1);
 /// get the selected area
+
+fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImageBuffer> {
+    let mut cursor_theme = CursorTheme::load(connection, shm.clone(), 23).ok()?;
+    let mut cursor = cursor_theme.get_cursor("crosshair");
+    if cursor.is_none() {
+        cursor = cursor_theme.get_cursor("left_ptr");
+    }
+    Some(cursor?[0].clone())
+}
+
 pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -422,17 +449,21 @@ pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
                                                       // thing is to
                                                       // get WlCompositor
 
+    let cursor_manager = globals
+        .bind::<WpCursorShapeManagerV1, _, _>(&qh, 1..=1, ())
+        .ok();
+
     let shm = globals
         .bind::<WlShm, _, _>(&qh, 1..=1, ())
         .map_err(WaySipError::NotSupportedProtocol)?;
 
-    let mut cursor_theme = CursorTheme::load(&connection, shm.clone(), 23)
-        .map_err(|_| WaySipError::NotGetCursorTheme)?;
-    let mut cursor = cursor_theme.get_cursor("crosshair");
-    if cursor.is_none() {
-        cursor = cursor_theme.get_cursor("left_ptr");
+    let cursor_buffer = get_cursor_buffer(&connection, &shm);
+
+    if cursor_manager.is_none() && cursor_buffer.is_none() {
+        return Err(WaySipError::NotGetCursorTheme);
     }
-    let cursor = cursor.ok_or(WaySipError::NotGetCursorTheme)?;
+
+    state.cursor_manager = cursor_manager;
 
     globals
         .bind::<WlSeat, _, _>(&qh, 1..=1, ())
@@ -517,7 +548,7 @@ pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
             wl_surface,
             cursor_suface,
             buffer,
-            cursor_buffer: cursor[0].clone(),
+            cursor_buffer: cursor_buffer.clone(),
             cairo_t,
         });
     }
