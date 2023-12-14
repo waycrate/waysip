@@ -15,6 +15,7 @@ wayland-cursor = "0.31.0"
 
 wayland-protocols = { version = "0.31.0", default-features = false, features = [
 	"unstable",
+	"staging",
 	"client",
 ] }
 
