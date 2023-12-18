@@ -415,7 +415,6 @@ delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
 
 delegate_noop!(SecondState: ignore WpCursorShapeManagerV1);
 delegate_noop!(SecondState: ignore WpCursorShapeDeviceV1);
-/// get the selected area
 
 fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImageBuffer> {
     let mut cursor_theme = CursorTheme::load(connection, shm.clone(), 23).ok()?;
@@ -426,6 +425,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
     Some(cursor?[0].clone())
 }
 
+/// get the selected area
 pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
