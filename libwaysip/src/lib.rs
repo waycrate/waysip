@@ -86,11 +86,18 @@ struct LayerSurfaceInfo {
     cairo_t: cairo::Context,
 }
 
+#[derive(Debug,Clone, Copy)]
+pub enum WaySipKind {
+    Area,
+    Point,
+}
+
 #[derive(Debug)]
 struct SecondState {
     outputs: Vec<wl_output::WlOutput>,
     zxdgoutputs: Vec<ZXdgOutputInfo>,
     running: bool,
+    choose_point: bool,
     wl_surfaces: Vec<LayerSurfaceInfo>,
     current_pos: (f64, f64),
     start_pos: Option<(f64, f64)>,
@@ -99,12 +106,19 @@ struct SecondState {
     cursor_manager: Option<WpCursorShapeManagerV1>,
 }
 
+impl SecondState {
+    fn set_point(&mut self) {
+        self.choose_point = true;
+    }
+}
+
 impl Default for SecondState {
     fn default() -> Self {
         SecondState {
             outputs: Vec::new(),
             zxdgoutputs: Vec::new(),
             running: true,
+            choose_point: false,
             wl_surfaces: Vec::new(),
             current_pos: (0., 0.),
             start_pos: None,
@@ -147,7 +161,10 @@ impl AreaInfo {
 
     /// caculate the real start position
     pub fn left_top_point(&self) -> (i32, i32) {
-        (self.start_x.min(self.end_x) as i32, (self.start_y.min(self.end_y)) as i32)
+        (
+            self.start_x.min(self.end_x) as i32,
+            (self.start_y.min(self.end_y)) as i32,
+        )
     }
 }
 
@@ -285,6 +302,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
                         dispatch_state.start_pos = Some(dispatch_state.current_pos);
+                        if dispatch_state.choose_point {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.running = false;
+                        }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
                         dispatch_state.end_pos = Some(dispatch_state.current_pos);
@@ -436,7 +457,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
 }
 
 /// get the selected area
-pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
+pub fn get_area(kind: WaySipKind) -> Result<Option<AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let (globals, _) = registry_queue_init::<BaseState>(&connection)
@@ -449,6 +470,9 @@ pub fn get_area() -> Result<Option<AreaInfo>, WaySipError> {
                                                                // this anymore
 
     let mut state = SecondState::default();
+    if matches!(kind, WaySipKind::Point) {
+        state.set_point();
+    }
 
     let mut event_queue = connection.new_event_queue::<SecondState>();
     let qh = event_queue.handle();

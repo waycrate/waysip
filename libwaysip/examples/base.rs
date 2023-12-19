@@ -1,4 +1,4 @@
-use libwaysip::get_area;
+use libwaysip::{get_area, WaySipKind};
 fn main() {
-    println!("{:?}", get_area());
+    println!("{:?}", get_area(WaySipKind::Area));
 }
