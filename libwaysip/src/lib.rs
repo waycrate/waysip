@@ -39,6 +39,12 @@ use wayland_protocols::wp::cursor_shape::v1::client::{
 
 use wayland_cursor::CursorImageBuffer;
 use wayland_cursor::CursorTheme;
+
+/// reexport wloutput
+pub mod reexport {
+    pub use wayland_client::protocol::wl_output::{self, WlOutput};
+}
+
 #[derive(Debug)]
 struct BaseState;
 
@@ -89,6 +95,8 @@ impl ZXdgOutputInfo {
     }
 }
 
+/// tell the screen info, include description, size and the name. and include the current wloutput
+/// binded by the screen
 #[derive(Debug)]
 pub struct ScreenInfo {
     output: WlOutput,
@@ -123,6 +131,8 @@ struct LayerSurfaceInfo {
     cairo_t: cairo::Context,
 }
 
+/// You are allow to choose three actions of waysip, include area selection, point selection, and
+/// select sreen
 #[derive(Debug, Clone, Copy, Default)]
 pub enum WaySipKind {
     #[default]
@@ -210,6 +220,7 @@ impl AreaInfo {
         )
     }
 
+    /// you can get the info of the choosed screen
     pub fn selected_screen_info(&self) -> &ScreenInfo {
         &self.screen_info
     }
