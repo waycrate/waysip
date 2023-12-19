@@ -125,19 +125,29 @@ pub struct AreaInfo {
 }
 
 impl AreaInfo {
-    /// provide the width of the area
-    pub fn width(&self) -> f64 {
+    /// provide the width of the area as f64
+    pub fn width_f64(&self) -> f64 {
         (self.end_x - self.start_x).abs()
     }
 
-    /// provide the height of the area
-    pub fn height(&self) -> f64 {
+    /// provide the width of the area as i32
+    pub fn width(&self) -> i32 {
+        self.width_f64() as i32
+    }
+
+    /// provide the height of the area as f64
+    pub fn height_f64(&self) -> f64 {
         (self.end_y - self.start_y).abs()
     }
 
+    /// provide the width of the area as i32
+    pub fn height(&self) -> i32 {
+        self.height_f64() as i32
+    }
+
     /// caculate the real start position
-    pub fn left_top_point(&self) -> (f64, f64) {
-        (self.start_x.min(self.end_x), (self.start_y.min(self.end_y)))
+    pub fn left_top_point(&self) -> (i32, i32) {
+        (self.start_x.min(self.end_x) as i32, (self.start_y.min(self.end_y)) as i32)
     }
 }
 
