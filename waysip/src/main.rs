@@ -53,8 +53,11 @@ fn main() {
             let (w, h) = screen_info.get_size();
             let name = screen_info.get_name();
             let description = screen_info.get_description();
+            let wlinfo = screen_info.get_outputinfo();
+            let (wl_w, wl_h) = wlinfo.get_size();
             println!("Screen : {name} {description}");
-            println!("width: {w}, height: {h}");
+            println!("logic_width: {w}, logic_height: {h}");
+            println!("width: {wl_w}, height: {wl_h}");
         }
         Cli::Output => {
             let info = get_info!(WaySipKind::Screen);

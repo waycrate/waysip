@@ -72,6 +72,40 @@ struct ZXdgOutputInfo {
     description: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct WlOutputInfo {
+    output: WlOutput,
+    description: String,
+    name: String,
+    size: (i32, i32),
+}
+
+impl WlOutputInfo {
+    fn new(output: WlOutput) -> Self {
+        Self {
+            output,
+            description: "".to_string(),
+            name: "".to_string(),
+            size: (0, 0),
+        }
+    }
+    pub fn get_output(&self) -> &WlOutput {
+        &self.output
+    }
+
+    pub fn get_size(&self) -> (i32, i32) {
+        self.size
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_description(&self) -> &str {
+        &self.description
+    }
+}
+
 impl ZXdgOutputInfo {
     fn new(zxdgoutput: zxdg_output_v1::ZxdgOutputV1) -> Self {
         Self {
@@ -84,9 +118,9 @@ impl ZXdgOutputInfo {
             description: "".to_string(),
         }
     }
-    fn get_screen_info(&self, output: WlOutput) -> ScreenInfo {
+    fn get_screen_info(&self, output_info: WlOutputInfo) -> ScreenInfo {
         ScreenInfo {
-            output,
+            output_info,
             start_x: self.start_x,
             start_y: self.start_y,
             width: self.width,
@@ -101,7 +135,7 @@ impl ZXdgOutputInfo {
 /// binded by the screen
 #[derive(Debug)]
 pub struct ScreenInfo {
-    output: WlOutput,
+    output_info: WlOutputInfo,
     start_x: i32,
     start_y: i32,
     width: i32,
@@ -111,10 +145,9 @@ pub struct ScreenInfo {
 }
 
 impl ScreenInfo {
-
     /// get the binding output
-    pub fn get_output(&self) -> &WlOutput {
-        &self.output
+    pub fn get_outputinfo(&self) -> &WlOutputInfo {
+        &self.output_info
     }
 
     /// get the logical size of the screen
@@ -160,7 +193,7 @@ pub enum WaySipKind {
 
 #[derive(Debug)]
 struct SecondState {
-    outputs: Vec<wl_output::WlOutput>,
+    outputs: Vec<WlOutputInfo>,
     zxdgoutputs: Vec<ZXdgOutputInfo>,
     running: bool,
     waysipkind: WaySipKind,
@@ -317,10 +350,42 @@ impl Dispatch<wl_registry::WlRegistry, ()> for SecondState {
 
         if interface == wl_output::WlOutput::interface().name {
             let output = proxy.bind::<wl_output::WlOutput, _, _>(name, version, qh, ());
-            state.outputs.push(output);
+            state.outputs.push(WlOutputInfo::new(output));
         }
     }
 }
+
+impl Dispatch<wl_output::WlOutput, ()> for SecondState {
+    fn event(
+        state: &mut Self,
+        wl_output: &wl_output::WlOutput,
+        event: <wl_output::WlOutput as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &wayland_client::QueueHandle<Self>,
+    ) {
+        let output = state
+            .outputs
+            .iter_mut()
+            .find(|x| x.get_output() == wl_output)
+            .unwrap();
+
+        match event {
+            wl_output::Event::Name { name } => {
+                output.name = name;
+            }
+            wl_output::Event::Description { description } => {
+                output.description = description;
+            }
+            wl_output::Event::Mode { width, height, .. } => {
+                output.size = (width, height);
+            }
+
+            _ => (),
+        }
+    }
+}
+
 impl Dispatch<xdg_wm_base::XdgWmBase, ()> for SecondState {
     fn event(
         _state: &mut Self,
@@ -529,8 +594,7 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for SecondState {
 
 delegate_noop!(SecondState: ignore WlCompositor); // WlCompositor is need to create a surface
 delegate_noop!(SecondState: ignore WlSurface); // surface is the base needed to show buffer
-delegate_noop!(SecondState: ignore WlOutput); // output is need to place layer_shell, although here
-                                              // it is not used
+                                               //
 delegate_noop!(SecondState: ignore WlShm); // shm is used to create buffer pool
 delegate_noop!(SecondState: ignore XdgToplevel); // so it is the same with layer_shell, private a
                                                  // place for surface
@@ -608,7 +672,7 @@ pub fn get_area(kind: WaySipKind) -> Result<Option<AreaInfo>, WaySipError> {
         .map_err(WaySipError::NotSupportedProtocol)?;
 
     for wloutput in state.outputs.iter() {
-        let zwloutput = xdg_output_manager.get_xdg_output(wloutput, &qh, ());
+        let zwloutput = xdg_output_manager.get_xdg_output(wloutput.get_output(), &qh, ());
         state.zxdgoutputs.push(ZXdgOutputInfo::new(zwloutput));
     }
 
@@ -640,7 +704,7 @@ pub fn get_area(kind: WaySipKind) -> Result<Option<AreaInfo>, WaySipError> {
 
         let layer = layer_shell.get_layer_surface(
             &wl_surface,
-            Some(wloutput),
+            Some(wloutput.get_output()),
             Layer::Overlay,
             format!("nobody_{index}"),
             &qh,
