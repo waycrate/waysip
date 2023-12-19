@@ -9,6 +9,8 @@ enum Cli {
     Point,
     #[command(short_flag = 'd')]
     Dimesions,
+    #[command(short_flag = 's')]
+    Screen,
 }
 
 fn main() {
@@ -42,6 +44,15 @@ fn main() {
             let width = info.width();
             let height = info.height();
             println!("{x},{y} {width}x{height}",);
+        }
+        Cli::Screen => {
+            let info = get_info!(WaySipKind::Screen);
+            let screen_info = info.selected_screen_info();
+            let (w, h) = screen_info.get_size();
+            let name = screen_info.get_name();
+            let description = screen_info.get_description();
+            println!("Screen : {name} {description}");
+            println!("width: {w}, height: {h}");
         }
     }
 }

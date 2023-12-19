@@ -8,8 +8,20 @@ const FONT_FAMILY: &str = "Sans";
 const FONT_SIZE: i32 = 10;
 
 impl LayerSurfaceInfo {
+    pub fn redraw_select_screen(&self, is_selected: bool, (width, height): (i32, i32)) {
+        let cairoinfo = &self.cairo_t;
+        cairoinfo.set_operator(cairo::Operator::Source);
+        let color = if is_selected { 0. } else { 0.4 };
+        let alpha = if is_selected { 0. } else { 0.5 };
+        cairoinfo.set_source_rgba(color, color, color, alpha);
+        cairoinfo.paint().unwrap();
+
+        self.wl_surface.attach(Some(&self.buffer), 0, 0);
+        self.wl_surface.damage(0, 0, width, height);
+        self.wl_surface.commit();
+    }
     pub fn redraw(
-        &mut self,
+        &self,
         (start_pos_x, start_pos_y): (f64, f64),
         (endpos_x, endpos_y): (f64, f64),
         (start_x, start_y): (i32, i32),

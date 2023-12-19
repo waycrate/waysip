@@ -62,6 +62,8 @@ struct ZXdgOutputInfo {
     height: i32,
     start_x: i32,
     start_y: i32,
+    name: String,
+    description: String,
 }
 
 impl ZXdgOutputInfo {
@@ -72,7 +74,42 @@ impl ZXdgOutputInfo {
             height: 0,
             start_x: 0,
             start_y: 0,
+            name: "".to_string(),
+            description: "".to_string(),
         }
+    }
+    fn get_screen_info(&self, output: WlOutput) -> ScreenInfo {
+        ScreenInfo {
+            output,
+            width: self.width,
+            height: self.height,
+            name: self.name.clone(),
+            description: self.description.clone(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ScreenInfo {
+    output: WlOutput,
+    width: i32,
+    height: i32,
+    name: String,
+    description: String,
+}
+
+impl ScreenInfo {
+    pub fn get_output(&self) -> &WlOutput {
+        &self.output
+    }
+    pub fn get_size(&self) -> (i32, i32) {
+        (self.width, self.height)
+    }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_description(&self) -> &str {
+        &self.description
     }
 }
 
@@ -86,10 +123,12 @@ struct LayerSurfaceInfo {
     cairo_t: cairo::Context,
 }
 
-#[derive(Debug,Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum WaySipKind {
+    #[default]
     Area,
     Point,
+    Screen,
 }
 
 #[derive(Debug)]
@@ -97,7 +136,7 @@ struct SecondState {
     outputs: Vec<wl_output::WlOutput>,
     zxdgoutputs: Vec<ZXdgOutputInfo>,
     running: bool,
-    choose_point: bool,
+    waysipkind: WaySipKind,
     wl_surfaces: Vec<LayerSurfaceInfo>,
     current_pos: (f64, f64),
     start_pos: Option<(f64, f64)>,
@@ -107,18 +146,12 @@ struct SecondState {
 }
 
 impl SecondState {
-    fn set_point(&mut self) {
-        self.choose_point = true;
-    }
-}
-
-impl Default for SecondState {
-    fn default() -> Self {
+    fn new(waysipkind: WaySipKind) -> Self {
         SecondState {
             outputs: Vec::new(),
             zxdgoutputs: Vec::new(),
             running: true,
-            choose_point: false,
+            waysipkind,
             wl_surfaces: Vec::new(),
             current_pos: (0., 0.),
             start_pos: None,
@@ -126,6 +159,14 @@ impl Default for SecondState {
             current_screen: 0,
             cursor_manager: None,
         }
+    }
+
+    fn is_area(&self) -> bool {
+        matches!(self.waysipkind, WaySipKind::Area)
+    }
+
+    fn is_screen(&self) -> bool {
+        matches!(self.waysipkind, WaySipKind::Screen)
     }
 }
 
@@ -136,6 +177,8 @@ pub struct AreaInfo {
     pub start_y: f64,
     pub end_x: f64,
     pub end_y: f64,
+
+    pub screen_info: ScreenInfo,
 }
 
 impl AreaInfo {
@@ -166,10 +209,24 @@ impl AreaInfo {
             (self.start_y.min(self.end_y)) as i32,
         )
     }
+
+    pub fn selected_screen_info(&self) -> &ScreenInfo {
+        &self.screen_info
+    }
 }
 
 impl SecondState {
-    fn redraw(&mut self) {
+    fn redraw_screen(&self) {
+        for ((index, info), ZXdgOutputInfo { width, height, .. }) in self
+            .wl_surfaces
+            .iter()
+            .enumerate()
+            .zip(self.zxdgoutputs.iter())
+        {
+            info.redraw_select_screen(self.current_screen == index, (*width, *height));
+        }
+    }
+    fn redraw(&self) {
         if self.start_pos.is_none() {
             return;
         }
@@ -183,7 +240,7 @@ impl SecondState {
                 ..
             },
             layershell_info,
-        ) in self.zxdgoutputs.iter().zip(self.wl_surfaces.iter_mut())
+        ) in self.zxdgoutputs.iter().zip(self.wl_surfaces.iter())
         {
             layershell_info.redraw(
                 (pos_x, pos_y),
@@ -200,11 +257,14 @@ impl SecondState {
         }
         let (start_x, start_y) = self.start_pos.unwrap();
         let (end_x, end_y) = self.end_pos.unwrap();
+        let output = self.outputs[self.current_screen].clone();
+        let info = &self.zxdgoutputs[self.current_screen];
         Some(AreaInfo {
             start_x,
             start_y,
             end_x,
             end_y,
+            screen_info: info.get_screen_info(output),
         })
     }
 }
@@ -302,7 +362,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
                         dispatch_state.start_pos = Some(dispatch_state.current_pos);
-                        if dispatch_state.choose_point {
+                        if !dispatch_state.is_area() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             dispatch_state.running = false;
                         }
@@ -359,6 +419,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                         hotspot_y as i32,
                     );
                     cursor_suface.commit();
+                }
+                if dispatch_state.is_screen() {
+                    dispatch_state.redraw_screen();
+                } else {
                     dispatch_state.redraw();
                 }
             }
@@ -371,7 +435,9 @@ impl Dispatch<wl_pointer::WlPointer, ()> for SecondState {
                 let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
-                dispatch_state.redraw();
+                if dispatch_state.is_area() {
+                    dispatch_state.redraw();
+                }
             }
             _ => {}
         }
@@ -426,6 +492,8 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for SecondState {
                 info.start_x = x;
                 info.start_y = y;
             }
+            zxdg_output_v1::Event::Name { name } => info.name = name,
+            zxdg_output_v1::Event::Description { description } => info.description = description,
             _ => {}
         }
     }
@@ -469,10 +537,7 @@ pub fn get_area(kind: WaySipKind) -> Result<Option<AreaInfo>, WaySipError> {
                                                                // BaseState after
                                                                // this anymore
 
-    let mut state = SecondState::default();
-    if matches!(kind, WaySipKind::Point) {
-        state.set_point();
-    }
+    let mut state = SecondState::new(kind);
 
     let mut event_queue = connection.new_event_queue::<SecondState>();
     let qh = event_queue.handle();
