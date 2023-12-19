@@ -16,4 +16,4 @@ keywords = ["wayland", "wlroots", "slurp"]
 readme = "README.md"
 
 [workspace.dependencies]
-libwaysip = { path = "./libwaysip" }
+libwaysip = { version = "0.2.0", path = "./libwaysip" }
