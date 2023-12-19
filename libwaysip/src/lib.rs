@@ -87,6 +87,8 @@ impl ZXdgOutputInfo {
     fn get_screen_info(&self, output: WlOutput) -> ScreenInfo {
         ScreenInfo {
             output,
+            start_x: self.start_x,
+            start_y: self.start_y,
             width: self.width,
             height: self.height,
             name: self.name.clone(),
@@ -100,6 +102,8 @@ impl ZXdgOutputInfo {
 #[derive(Debug)]
 pub struct ScreenInfo {
     output: WlOutput,
+    start_x: i32,
+    start_y: i32,
     width: i32,
     height: i32,
     name: String,
@@ -107,17 +111,30 @@ pub struct ScreenInfo {
 }
 
 impl ScreenInfo {
+
+    /// get the binding output
     pub fn get_output(&self) -> &WlOutput {
         &self.output
     }
+
+    /// get the logical size of the screen
     pub fn get_size(&self) -> (i32, i32) {
         (self.width, self.height)
     }
+
+    /// get the name of the screen
     pub fn get_name(&self) -> &str {
         &self.name
     }
+
+    /// get the description of the screen
     pub fn get_description(&self) -> &str {
         &self.description
+    }
+
+    /// get the logical positon of the screen
+    pub fn get_position(&self) -> (i32, i32) {
+        (self.start_x, self.start_y)
     }
 }
 

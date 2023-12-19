@@ -11,6 +11,8 @@ enum Cli {
     Dimesions,
     #[command(short_flag = 's')]
     Screen,
+    #[command(short_flag = 'o')]
+    Output,
 }
 
 fn main() {
@@ -53,6 +55,13 @@ fn main() {
             let description = screen_info.get_description();
             println!("Screen : {name} {description}");
             println!("width: {w}, height: {h}");
+        }
+        Cli::Output => {
+            let info = get_info!(WaySipKind::Screen);
+            let screen_info = info.selected_screen_info();
+            let (x, y) = screen_info.get_position();
+            let (width, height) = screen_info.get_size();
+            println!("{x},{y} {width}x{height}",);
         }
     }
 }
