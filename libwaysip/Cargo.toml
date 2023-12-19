@@ -11,7 +11,7 @@ readme.workspace = true
 
 [dependencies]
 tempfile = "3.8.1"
-wayland-client = { version = "0.31.1" }
+wayland-client = "0.31.1"
 wayland-cursor = "0.31.0"
 
 wayland-protocols = { version = "0.31.0", default-features = false, features = [
