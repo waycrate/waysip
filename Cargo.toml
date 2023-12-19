@@ -8,7 +8,7 @@ authors = [
 	"Aakash Sen Sharma <aakashsensharma@gmail.com>",
 ]
 edition = "2021"
-version = "0.1.1"
+version = "0.2.0"
 license = "MIT"
 description = "Wayland native (zwlr_layer_shell) area selection client"
 repository = "https://github.com/waycrate/waysip"
