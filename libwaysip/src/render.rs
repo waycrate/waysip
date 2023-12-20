@@ -5,16 +5,48 @@ use std::fs::File;
 use super::LayerSurfaceInfo;
 
 const FONT_FAMILY: &str = "Sans";
-const FONT_SIZE: i32 = 10;
+const FONT_SIZE: i32 = 20;
 
 impl LayerSurfaceInfo {
-    pub fn redraw_select_screen(&self, is_selected: bool, (width, height): (i32, i32)) {
+    pub fn redraw_select_screen(
+        &self,
+        is_selected: bool,
+        (width, height): (i32, i32),
+        (start_x, start_y): (i32, i32),
+        name: &str,
+        descriptin: &str,
+    ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
         let color = if is_selected { 0. } else { 0.4 };
         let alpha = if is_selected { 0. } else { 0.5 };
         cairoinfo.set_source_rgba(color, color, color, alpha);
         cairoinfo.paint().unwrap();
+
+        cairoinfo.set_source_rgb(0.3_f64, 0_f64, 0_f64);
+
+        let font_size = FONT_SIZE;
+        let pangolayout = pangocairo::create_layout(cairoinfo);
+        let mut desc = pango::FontDescription::new();
+        desc.set_family(FONT_FAMILY);
+        desc.set_weight(pango::Weight::Bold);
+
+        desc.set_size(font_size * pango::SCALE);
+        pangolayout.set_font_description(Some(&desc));
+
+        let name_txt = format!("{name}  {descriptin}");
+        pangolayout.set_text(&name_txt);
+        cairoinfo.save().unwrap();
+        cairoinfo.move_to(10., 60.);
+        pangocairo::show_layout(cairoinfo, &pangolayout);
+        cairoinfo.restore().unwrap();
+
+        let pos_txt = format!("pos: {start_x}, {start_y}");
+        pangolayout.set_text(&pos_txt);
+        cairoinfo.save().unwrap();
+        cairoinfo.move_to(10., 90.);
+        pangocairo::show_layout(cairoinfo, &pangolayout);
+        cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
         self.wl_surface.damage(0, 0, width, height);

@@ -274,13 +274,30 @@ impl AreaInfo {
 
 impl SecondState {
     fn redraw_screen(&self) {
-        for ((index, info), ZXdgOutputInfo { width, height, .. }) in self
+        for (
+            (index, info),
+            ZXdgOutputInfo {
+                width,
+                height,
+                start_x,
+                start_y,
+                name,
+                description,
+                ..
+            },
+        ) in self
             .wl_surfaces
             .iter()
             .enumerate()
             .zip(self.zxdgoutputs.iter())
         {
-            info.redraw_select_screen(self.current_screen == index, (*width, *height));
+            info.redraw_select_screen(
+                self.current_screen == index,
+                (*width, *height),
+                (*start_x, *start_y),
+                name,
+                description,
+            );
         }
     }
     fn redraw(&self) {
