@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{get_area, WaySipKind};
+use libwaysip::{WaySipKind, WaysipEv};
 
 #[derive(Debug, Parser)]
 #[command(name = "waysip")]
@@ -18,9 +18,10 @@ enum Cli {
 fn main() {
     let args = Cli::parse();
 
+    let waysip = WaysipEv::new().unwrap();
     macro_rules! get_info {
         ($x: expr) => {
-            match get_area($x) {
+            match waysip.get_area($x) {
                 Ok(Some(info)) => info,
                 Ok(None) => {
                     eprintln!("Get None, you cancel it");

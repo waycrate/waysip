@@ -15,5 +15,5 @@ pub enum WaySipError {
     #[error("Not supported protocol")]
     NotSupportedProtocol(BindError),
     #[error("Cannot get cursor")]
-    NotGetCursorTheme
+    NotGetCursorTheme,
 }

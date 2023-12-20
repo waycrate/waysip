@@ -1,4 +1,5 @@
-use libwaysip::{get_area, WaySipKind};
+use libwaysip::{WaySipKind, WaysipEv};
 fn main() {
-    println!("{:?}", get_area(WaySipKind::Area));
+    let ev = WaysipEv::new().unwrap();
+    println!("{:?}", ev.get_area(WaySipKind::Area));
 }
