@@ -40,6 +40,10 @@ use wayland_protocols::wp::cursor_shape::v1::client::{
 use wayland_cursor::CursorImageBuffer;
 use wayland_cursor::CursorTheme;
 
+pub mod reexport {
+    pub use wayland_client::protocol::wl_output::{self, WlOutput};
+}
+
 #[derive(Debug)]
 struct BaseState;
 
@@ -85,7 +89,7 @@ impl WlOutputInfo {
         }
     }
 
-    fn get_output(&self) -> &WlOutput {
+    pub fn get_output(&self) -> &WlOutput {
         &self.output
     }
 
