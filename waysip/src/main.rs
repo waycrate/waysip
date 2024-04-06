@@ -8,7 +8,7 @@ enum Cli {
     #[command(short_flag = 'p')]
     Point,
     #[command(short_flag = 'd')]
-    Dimesions,
+    Dimensions,
     #[command(short_flag = 's')]
     Screen,
     #[command(short_flag = 'o')]
@@ -40,7 +40,7 @@ fn main() {
             let (x, y) = info.left_top_point();
             println!("{x},{y} 1x1");
         }
-        Cli::Dimesions => {
+        Cli::Dimensions => {
             let info = get_info!(WaySipKind::Area);
             let (x, y) = info.left_top_point();
             let width = info.width();
