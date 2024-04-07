@@ -1,7 +1,6 @@
 use clap::Parser;
-use libwaysip::{error::WaySipError, get_area, state, SelectionType};
+use libwaysip::{get_area, SelectionType};
 use std::str::FromStr;
-use wayland_client::{globals::registry_queue_init, Connection};
 
 #[derive(Debug, Parser)]
 #[command(name = "waysip")]
@@ -23,12 +22,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_writer(std::io::stderr)
         .init();
 
-    let connection =
-        Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-
-    let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
-        .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-
     let args = Cli::parse();
 
     // TODO: Enable tracing
@@ -36,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     macro_rules! get_info {
         ($x: expr) => {
-            match get_area(&connection, globals, $x) {
+            match get_area(None, $x) {
                 Ok(Some(info)) => info,
                 Ok(None) => {
                     eprintln!("Get None, you cancel it");

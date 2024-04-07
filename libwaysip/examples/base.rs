@@ -1,4 +1,4 @@
-use libwaysip::{get_area, SelectionType};
+use libwaysip::{get_area, SelectionType, WaysipConnection};
 use wayland_client::{
     globals::{registry_queue_init, GlobalListContents},
     protocol::wl_registry,
@@ -23,5 +23,14 @@ fn main() {
     let connection = Connection::connect_to_env().unwrap();
     let (globals, _) = registry_queue_init::<State>(&connection).unwrap();
 
-    println!("{:?}", get_area(&connection, globals, SelectionType::Area));
+    println!(
+        "{:?}",
+        get_area(
+            Some(WaysipConnection {
+                connection: &connection,
+                globals
+            }),
+            SelectionType::Area
+        )
+    );
 }
