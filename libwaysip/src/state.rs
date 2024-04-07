@@ -9,7 +9,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrL
 /// You are allow to choose three actions of waysip, include area selection, point selection, and
 /// select sreen
 #[derive(Debug, Clone, Copy, Default)]
-pub enum WaySipKind {
+pub enum SelectionType {
     #[default]
     Area,
     Point,
@@ -132,7 +132,7 @@ pub struct WaysipState {
     pub outputs: Vec<WlOutputInfo>,
     pub zxdgoutputs: Vec<ZXdgOutputInfo>,
     pub running: bool,
-    pub waysipkind: WaySipKind,
+    pub waysipkind: SelectionType,
     pub wl_surfaces: Vec<LayerSurfaceInfo>,
     pub current_pos: (f64, f64),
     pub start_pos: Option<(f64, f64)>,
@@ -142,7 +142,7 @@ pub struct WaysipState {
 }
 
 impl WaysipState {
-    pub fn new(waysipkind: WaySipKind) -> Self {
+    pub fn new(waysipkind: SelectionType) -> Self {
         WaysipState {
             outputs: Vec::new(),
             zxdgoutputs: Vec::new(),
@@ -158,11 +158,11 @@ impl WaysipState {
     }
 
     pub fn is_area(&self) -> bool {
-        matches!(self.waysipkind, WaySipKind::Area)
+        matches!(self.waysipkind, SelectionType::Area)
     }
 
     pub fn is_screen(&self) -> bool {
-        matches!(self.waysipkind, WaySipKind::Screen)
+        matches!(self.waysipkind, SelectionType::Screen)
     }
 
     pub fn redraw_screen(&self) {

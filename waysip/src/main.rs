@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{get_area, state::WaySipKind};
+use libwaysip::{get_area, state::SelectionType};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Cli::parse();
 
-    // TODO: Enable tracing based logging for dispatch calls etc
+    // TODO: Enable tracing
     // TODO: Make errors go through the cli into output
 
     macro_rules! get_info {
@@ -46,19 +46,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args {
         Cli::Point => {
-            let info = get_info!(WaySipKind::Point);
+            let info = get_info!(SelectionType::Point);
             let (x, y) = info.left_top_point();
             println!("{x},{y} 1x1");
         }
         Cli::Dimensions => {
-            let info = get_info!(WaySipKind::Area);
+            let info = get_info!(SelectionType::Area);
             let (x, y) = info.left_top_point();
             let width = info.width();
             let height = info.height();
             println!("{x},{y} {width}x{height}",);
         }
         Cli::Screen => {
-            let info = get_info!(WaySipKind::Screen);
+            let info = get_info!(SelectionType::Screen);
             let screen_info = info.selected_screen_info();
             let (w, h) = screen_info.get_size();
             let name = screen_info.get_name();
@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("width: {wl_w}, height: {wl_h}");
         }
         Cli::Output => {
-            let info = get_info!(WaySipKind::Screen);
+            let info = get_info!(SelectionType::Screen);
             let screen_info = info.selected_screen_info();
             let (x, y) = screen_info.get_position();
             let (width, height) = screen_info.get_size();

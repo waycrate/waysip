@@ -35,7 +35,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
 }
 
 /// get the selected area
-pub fn get_area(kind: state::WaySipKind) -> Result<Option<state::AreaInfo>, WaySipError> {
+pub fn get_area(kind: state::SelectionType) -> Result<Option<state::AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
