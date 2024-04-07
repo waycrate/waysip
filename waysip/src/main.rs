@@ -1,9 +1,10 @@
 use clap::Parser;
-use libwaysip::{get_area, WaySipKind};
+use libwaysip::{get_area, state::WaySipKind};
+use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command(name = "waysip")]
-#[command(about="a tool like slurp, but in rust", long_about = None)]
+#[command(about="Wayland native area picker", long_about = None)]
 enum Cli {
     #[command(short_flag = 'p')]
     Point,
@@ -15,8 +16,16 @@ enum Cli {
     Output,
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::from_str("trace")?)
+        .with_writer(std::io::stderr)
+        .init();
+
     let args = Cli::parse();
+
+    // TODO: Enable tracing based logging for dispatch calls etc
+    // TODO: Make errors go through the cli into output
 
     macro_rules! get_info {
         ($x: expr) => {
@@ -24,11 +33,12 @@ fn main() {
                 Ok(Some(info)) => info,
                 Ok(None) => {
                     eprintln!("Get None, you cancel it");
-                    return;
+                    // TODO: Have proper error types
+                    return Ok(());
                 }
                 Err(e) => {
                     eprintln!("Error,{e}");
-                    return;
+                    return Ok(());
                 }
             }
         };
@@ -67,4 +77,6 @@ fn main() {
             println!("{x},{y} {width}x{height}",);
         }
     }
+
+    Ok(())
 }
