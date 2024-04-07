@@ -1,40 +1,30 @@
 mod dispatch;
-mod error;
 mod render;
+
+pub mod error;
 pub mod state;
 
-pub use error::WaySipError;
-
+use error::WaySipError;
 use std::os::unix::prelude::AsFd;
-
-
 use wayland_client::{
-    globals::{registry_queue_init},
+    globals::registry_queue_init,
     protocol::{
         wl_compositor::WlCompositor,
-        wl_seat::{WlSeat},
+        wl_seat::WlSeat,
         wl_shm::{self, WlShm},
     },
     Connection,
 };
-
-
-
-use wayland_protocols::xdg::xdg_output::zv1::client::{
-    zxdg_output_manager_v1::ZxdgOutputManagerV1,
+use wayland_cursor::{CursorImageBuffer, CursorTheme};
+use wayland_protocols::{
+    wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
+    xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1,
 };
-
 use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_shell_v1::{Layer, ZwlrLayerShellV1},
     zwlr_layer_surface_v1::{self, Anchor},
 };
 
-use wayland_protocols::wp::cursor_shape::v1::client::{
-    wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
-};
-
-use wayland_cursor::CursorImageBuffer;
-use wayland_cursor::CursorTheme;
 fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImageBuffer> {
     let mut cursor_theme = CursorTheme::load(connection, shm.clone(), 23).ok()?;
     let mut cursor = cursor_theme.get_cursor("crosshair");
@@ -48,7 +38,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
 pub fn get_area(kind: state::WaySipKind) -> Result<Option<state::AreaInfo>, WaySipError> {
     let connection =
         Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-    let (globals, _) = registry_queue_init::<state::BaseState>(&connection)
+    let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?; // We just need the
                                                                // global, the
                                                                // event_queue is
@@ -57,9 +47,9 @@ pub fn get_area(kind: state::WaySipKind) -> Result<Option<state::AreaInfo>, WayS
                                                                // state::BaseState after
                                                                // this anymore
 
-    let mut state = state::SecondState::new(kind);
+    let mut state = state::WaysipState::new(kind);
 
-    let mut event_queue = connection.new_event_queue::<state::SecondState>();
+    let mut event_queue = connection.new_event_queue::<state::WaysipState>();
     let qh = event_queue.handle();
 
     let wmcompositer = globals

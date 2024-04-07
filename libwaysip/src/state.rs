@@ -1,30 +1,10 @@
-
-
-use wayland_client::{
-    protocol::{
-        wl_buffer::WlBuffer,
-        wl_surface::WlSurface,
-    },
-};
-
-
-
-use wayland_protocols::xdg::xdg_output::zv1::client::{
-    zxdg_output_v1,
-};
-
-use wayland_protocols_wlr::layer_shell::v1::client::{
-    zwlr_layer_surface_v1::{ZwlrLayerSurfaceV1},
-};
-
-use wayland_protocols::wp::cursor_shape::v1::client::{
-    wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
-};
-
+use wayland_client::protocol::{wl_buffer::WlBuffer, wl_output::WlOutput, wl_surface::WlSurface};
 use wayland_cursor::CursorImageBuffer;
-
-
-use wayland_client::protocol::wl_output::WlOutput;
+use wayland_protocols::{
+    wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
+    xdg::xdg_output::zv1::client::zxdg_output_v1,
+};
+use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1;
 
 /// You are allow to choose three actions of waysip, include area selection, point selection, and
 /// select sreen
@@ -35,9 +15,6 @@ pub enum WaySipKind {
     Point,
     Screen,
 }
-
-#[derive(Debug)]
-pub struct BaseState;
 
 #[derive(Debug)]
 pub struct ZXdgOutputInfo {
@@ -151,7 +128,7 @@ impl ScreenInfo {
 }
 
 #[derive(Debug)]
-pub struct SecondState {
+pub struct WaysipState {
     pub outputs: Vec<WlOutputInfo>,
     pub zxdgoutputs: Vec<ZXdgOutputInfo>,
     pub running: bool,
@@ -164,9 +141,9 @@ pub struct SecondState {
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
 }
 
-impl SecondState {
+impl WaysipState {
     pub fn new(waysipkind: WaySipKind) -> Self {
-        SecondState {
+        WaysipState {
             outputs: Vec::new(),
             zxdgoutputs: Vec::new(),
             running: true,

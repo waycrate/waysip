@@ -1,41 +1,35 @@
-
-use crate::state::{self, LayerSurfaceInfo, SecondState};
-use wayland_client::protocol::wl_output;
+use crate::state::{self, LayerSurfaceInfo, WaysipState};
 use wayland_client::{
     delegate_noop,
-    globals::{GlobalListContents},
+    globals::GlobalListContents,
+    protocol::wl_output,
     protocol::{
         wl_buffer::WlBuffer,
         wl_compositor::WlCompositor,
         wl_keyboard, wl_pointer, wl_registry,
         wl_seat::{self},
-        wl_shm::{WlShm},
+        wl_shm::WlShm,
         wl_shm_pool::WlShmPool,
         wl_surface::WlSurface,
     },
     Connection, Dispatch, Proxy, WEnum,
 };
-
-use wayland_protocols::xdg::shell::client::{xdg_toplevel::XdgToplevel, xdg_wm_base};
-
-use wayland_protocols::xdg::xdg_output::zv1::client::{
-    zxdg_output_manager_v1::ZxdgOutputManagerV1, zxdg_output_v1,
+use wayland_protocols::{
+    wp::cursor_shape::v1::client::{
+        wp_cursor_shape_device_v1::{self, WpCursorShapeDeviceV1},
+        wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
+    },
+    xdg::{
+        shell::client::{xdg_toplevel::XdgToplevel, xdg_wm_base},
+        xdg_output::zv1::client::{zxdg_output_manager_v1::ZxdgOutputManagerV1, zxdg_output_v1},
+    },
 };
-
 use wayland_protocols_wlr::layer_shell::v1::client::{
-    zwlr_layer_shell_v1::{ZwlrLayerShellV1},
+    zwlr_layer_shell_v1::ZwlrLayerShellV1,
     zwlr_layer_surface_v1::{self},
 };
 
-use wayland_protocols::wp::cursor_shape::v1::client::{
-    wp_cursor_shape_device_v1::{self, WpCursorShapeDeviceV1},
-    wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
-};
-
-
-
-
-impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for SecondState {
+impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaysipState {
     fn event(
         state: &mut Self,
         surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
@@ -58,7 +52,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for SecondState {
     }
 }
 
-impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for SecondState {
+impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for WaysipState {
     fn event(
         state: &mut Self,
         proxy: &zxdg_output_v1::ZxdgOutputV1,
@@ -91,7 +85,7 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for SecondState {
 }
 
 // so interesting, it is just need to invoke once, it just used to get the globals
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for state::BaseState {
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for state::WaysipState {
     fn event(
         _state: &mut Self,
         _proxy: &wl_registry::WlRegistry,
@@ -103,7 +97,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for state::BaseState 
     }
 }
 
-impl Dispatch<wl_registry::WlRegistry, ()> for state::SecondState {
+impl Dispatch<wl_registry::WlRegistry, ()> for state::WaysipState {
     fn event(
         state: &mut Self,
         proxy: &wl_registry::WlRegistry,
@@ -128,7 +122,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for state::SecondState {
     }
 }
 
-impl Dispatch<wl_output::WlOutput, ()> for state::SecondState {
+impl Dispatch<wl_output::WlOutput, ()> for state::WaysipState {
     fn event(
         state: &mut Self,
         wl_output: &wl_output::WlOutput,
@@ -159,7 +153,7 @@ impl Dispatch<wl_output::WlOutput, ()> for state::SecondState {
     }
 }
 
-impl Dispatch<xdg_wm_base::XdgWmBase, ()> for state::SecondState {
+impl Dispatch<xdg_wm_base::XdgWmBase, ()> for state::WaysipState {
     fn event(
         _state: &mut Self,
         wm_base: &xdg_wm_base::XdgWmBase,
@@ -174,7 +168,7 @@ impl Dispatch<xdg_wm_base::XdgWmBase, ()> for state::SecondState {
     }
 }
 
-impl Dispatch<wl_seat::WlSeat, ()> for state::SecondState {
+impl Dispatch<wl_seat::WlSeat, ()> for state::WaysipState {
     fn event(
         _state: &mut Self,
         seat: &wl_seat::WlSeat,
@@ -197,7 +191,7 @@ impl Dispatch<wl_seat::WlSeat, ()> for state::SecondState {
     }
 }
 
-impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::SecondState {
+impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
     fn event(
         state: &mut Self,
         _proxy: &wl_keyboard::WlKeyboard,
@@ -214,7 +208,7 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::SecondState {
     }
 }
 
-impl Dispatch<wl_pointer::WlPointer, ()> for state::SecondState {
+impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
     fn event(
         dispatch_state: &mut Self,
         pointer: &wl_pointer::WlPointer,
@@ -310,17 +304,17 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::SecondState {
     }
 }
 
-delegate_noop!(SecondState: ignore WlCompositor); // WlCompositor is need to create a surface
-delegate_noop!(SecondState: ignore WlSurface); // surface is the base needed to show buffer
+delegate_noop!(WaysipState: ignore WlCompositor); // WlCompositor is need to create a surface
+delegate_noop!(WaysipState: ignore WlSurface); // surface is the base needed to show buffer
                                                //
-delegate_noop!(SecondState: ignore WlShm); // shm is used to create buffer pool
-delegate_noop!(SecondState: ignore XdgToplevel); // so it is the same with layer_shell, private a
+delegate_noop!(WaysipState: ignore WlShm); // shm is used to create buffer pool
+delegate_noop!(WaysipState: ignore XdgToplevel); // so it is the same with layer_shell, private a
                                                  // place for surface
-delegate_noop!(SecondState: ignore WlShmPool); // so it is pool, created by wl_shm
-delegate_noop!(SecondState: ignore WlBuffer); // buffer show the picture
-delegate_noop!(SecondState: ignore ZwlrLayerShellV1); // it is simillar with xdg_toplevel, also the
+delegate_noop!(WaysipState: ignore WlShmPool); // so it is pool, created by wl_shm
+delegate_noop!(WaysipState: ignore WlBuffer); // buffer show the picture
+delegate_noop!(WaysipState: ignore ZwlrLayerShellV1); // it is simillar with xdg_toplevel, also the
                                                       // ext-session-shell
-delegate_noop!(SecondState: ignore ZxdgOutputManagerV1);
+delegate_noop!(WaysipState: ignore ZxdgOutputManagerV1);
 
-delegate_noop!(SecondState: ignore WpCursorShapeManagerV1);
-delegate_noop!(SecondState: ignore WpCursorShapeDeviceV1);
+delegate_noop!(WaysipState: ignore WpCursorShapeManagerV1);
+delegate_noop!(WaysipState: ignore WpCursorShapeDeviceV1);
