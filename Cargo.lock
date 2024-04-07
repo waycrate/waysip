@@ -963,6 +963,7 @@ dependencies = [
  "libwaysip",
  "tracing",
  "tracing-subscriber",
+ "wayland-client",
 ]
 
 [[package]]
