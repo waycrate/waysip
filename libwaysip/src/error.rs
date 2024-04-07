@@ -8,12 +8,12 @@ use wayland_client::{globals::BindError, DispatchError};
 /// 4. when not get the cursor
 #[derive(Error, Debug)]
 pub enum WaySipError {
-    #[error("Init Failed")]
+    #[error("Failed to initialize app state")]
     InitFailed(String),
-    #[error("Error during queue")]
+    #[error("Wayland dispatch failed!")]
     DispatchError(DispatchError),
-    #[error("Not supported protocol")]
+    #[error("Protocol not supported")]
     NotSupportedProtocol(BindError),
     #[error("Cannot get cursor")]
-    NotGetCursorTheme
+    CursorThemeFetchFailed,
 }

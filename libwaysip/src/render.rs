@@ -2,7 +2,7 @@ use cairo::{Context, Format};
 use memmap2::MmapMut;
 use std::fs::File;
 
-use super::LayerSurfaceInfo;
+use super::state::LayerSurfaceInfo;
 
 const FONT_FAMILY: &str = "Sans";
 const FONT_SIZE: i32 = 20;

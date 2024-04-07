@@ -17,3 +17,4 @@ readme = "README.md"
 
 [workspace.dependencies]
 libwaysip = { version = "0.2.2", path = "./libwaysip" }
+tracing = "0.1"
