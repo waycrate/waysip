@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     macro_rules! get_info {
         ($x: expr) => {
-            match get_area($x) {
+            match get_area(None, $x) {
                 Ok(Some(info)) => info,
                 Ok(None) => {
                     eprintln!("Get None, you cancel it");

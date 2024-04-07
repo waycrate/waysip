@@ -18,7 +18,7 @@ pub enum SelectionType {
 
 #[derive(Debug)]
 pub struct ZXdgOutputInfo {
-    pub zxdgoutput: zxdg_output_v1::ZxdgOutputV1,
+    pub zxdg_output: zxdg_output_v1::ZxdgOutputV1,
     pub width: i32,
     pub height: i32,
     pub start_x: i32,
@@ -30,7 +30,7 @@ pub struct ZXdgOutputInfo {
 impl ZXdgOutputInfo {
     pub fn new(zxdgoutput: zxdg_output_v1::ZxdgOutputV1) -> Self {
         Self {
-            zxdgoutput,
+            zxdg_output: zxdgoutput,
             width: 0,
             height: 0,
             start_x: 0,
@@ -130,9 +130,9 @@ impl ScreenInfo {
 #[derive(Debug)]
 pub struct WaysipState {
     pub outputs: Vec<WlOutputInfo>,
-    pub zxdgoutputs: Vec<ZXdgOutputInfo>,
+    pub zxdg_outputs: Vec<ZXdgOutputInfo>,
     pub running: bool,
-    pub waysipkind: SelectionType,
+    pub selection_type: SelectionType,
     pub wl_surfaces: Vec<LayerSurfaceInfo>,
     pub current_pos: (f64, f64),
     pub start_pos: Option<(f64, f64)>,
@@ -142,12 +142,12 @@ pub struct WaysipState {
 }
 
 impl WaysipState {
-    pub fn new(waysipkind: SelectionType) -> Self {
+    pub fn new(selection_type: SelectionType) -> Self {
         WaysipState {
             outputs: Vec::new(),
-            zxdgoutputs: Vec::new(),
+            zxdg_outputs: Vec::new(),
             running: true,
-            waysipkind,
+            selection_type,
             wl_surfaces: Vec::new(),
             current_pos: (0., 0.),
             start_pos: None,
@@ -158,11 +158,11 @@ impl WaysipState {
     }
 
     pub fn is_area(&self) -> bool {
-        matches!(self.waysipkind, SelectionType::Area)
+        matches!(self.selection_type, SelectionType::Area)
     }
 
     pub fn is_screen(&self) -> bool {
-        matches!(self.waysipkind, SelectionType::Screen)
+        matches!(self.selection_type, SelectionType::Screen)
     }
 
     pub fn redraw_screen(&self) {
@@ -181,7 +181,7 @@ impl WaysipState {
             .wl_surfaces
             .iter()
             .enumerate()
-            .zip(self.zxdgoutputs.iter())
+            .zip(self.zxdg_outputs.iter())
         {
             info.redraw_select_screen(
                 self.current_screen == index,
@@ -206,7 +206,7 @@ impl WaysipState {
                 ..
             },
             layershell_info,
-        ) in self.zxdgoutputs.iter().zip(self.wl_surfaces.iter())
+        ) in self.zxdg_outputs.iter().zip(self.wl_surfaces.iter())
         {
             layershell_info.redraw(
                 (pos_x, pos_y),
@@ -224,7 +224,7 @@ impl WaysipState {
         let (start_x, start_y) = self.start_pos.unwrap();
         let (end_x, end_y) = self.end_pos.unwrap();
         let output = self.outputs[self.current_screen].clone();
-        let info = &self.zxdgoutputs[self.current_screen];
+        let info = &self.zxdg_outputs[self.current_screen];
         Some(AreaInfo {
             start_x,
             start_y,

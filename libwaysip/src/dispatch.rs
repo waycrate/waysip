@@ -62,9 +62,9 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for WaysipState {
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
         let Some(info) = state
-            .zxdgoutputs
+            .zxdg_outputs
             .iter_mut()
-            .find(|info| info.zxdgoutput == *proxy)
+            .find(|info| info.zxdg_output == *proxy)
         else {
             return;
         };
@@ -84,7 +84,6 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for WaysipState {
     }
 }
 
-// so interesting, it is just need to invoke once, it just used to get the globals
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for state::WaysipState {
     fn event(
         _state: &mut Self,
@@ -259,8 +258,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     .position(|info| info.wl_surface == surface)
                     .unwrap();
                 dispatch_state.current_screen = current_screen;
-                let start_x = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_x;
-                let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
+                let start_x = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_x;
+                let start_y = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_y;
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
 
@@ -291,8 +290,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 surface_y,
                 ..
             } => {
-                let start_x = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_x;
-                let start_y = dispatch_state.zxdgoutputs[dispatch_state.current_screen].start_y;
+                let start_x = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_x;
+                let start_y = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_y;
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
                 if dispatch_state.is_area() {
