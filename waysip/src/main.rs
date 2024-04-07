@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{get_area, state::SelectionType};
+use libwaysip::{get_area, SelectionType};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
