@@ -164,11 +164,11 @@ pub fn get_area(
             (),
         );
 
-        let cursor_suface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
+        let cursor_surface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
         state.wl_surfaces.push(state::LayerSurfaceInfo {
             layer,
             wl_surface,
-            cursor_suface,
+            cursor_surface,
             buffer,
             cursor_buffer: cursor_buffer.clone(),
             cairo_t,

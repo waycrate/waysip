@@ -25,7 +25,7 @@ TODO:
 ## Compiling:
 
 -   `git clone https://github.com/waycrate/waysip && cd waysip`
--   `cargo buid --release`
+-   `cargo build --release`
 -   `sudo mv ./target/release/waysip /usr/local/bin`
 
 # Support:

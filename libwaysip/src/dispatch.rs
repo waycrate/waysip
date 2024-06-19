@@ -242,7 +242,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 surface_y,
             } => {
                 let Some(LayerSurfaceInfo {
-                    cursor_suface,
+                    cursor_surface,
                     cursor_buffer,
                     ..
                 }) = dispatch_state
@@ -269,15 +269,15 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     device.destroy();
                 } else {
                     let cursor_buffer = cursor_buffer.as_ref().unwrap();
-                    cursor_suface.attach(Some(cursor_buffer), 0, 0);
+                    cursor_surface.attach(Some(cursor_buffer), 0, 0);
                     let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
                     pointer.set_cursor(
                         serial,
-                        Some(cursor_suface),
+                        Some(cursor_surface),
                         hotspot_x as i32,
                         hotspot_y as i32,
                     );
-                    cursor_suface.commit();
+                    cursor_surface.commit();
                 }
                 if dispatch_state.is_screen() {
                     dispatch_state.redraw_screen();
@@ -311,7 +311,7 @@ delegate_noop!(WaysipState: ignore XdgToplevel); // so it is the same with layer
                                                  // place for surface
 delegate_noop!(WaysipState: ignore WlShmPool); // so it is pool, created by wl_shm
 delegate_noop!(WaysipState: ignore WlBuffer); // buffer show the picture
-delegate_noop!(WaysipState: ignore ZwlrLayerShellV1); // it is simillar with xdg_toplevel, also the
+delegate_noop!(WaysipState: ignore ZwlrLayerShellV1); // it is similar with xdg_toplevel, also the
                                                       // ext-session-shell
 delegate_noop!(WaysipState: ignore ZxdgOutputManagerV1);
 

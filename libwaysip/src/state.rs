@@ -121,7 +121,7 @@ impl ScreenInfo {
         &self.description
     }
 
-    /// get the logical positon of the screen
+    /// get the logical position of the screen
     pub fn get_position(&self) -> (i32, i32) {
         (self.start_x, self.start_y)
     }
@@ -239,7 +239,7 @@ impl WaysipState {
 pub struct LayerSurfaceInfo {
     pub layer: ZwlrLayerSurfaceV1,
     pub wl_surface: WlSurface,
-    pub cursor_suface: WlSurface,
+    pub cursor_surface: WlSurface,
     pub buffer: WlBuffer,
     pub cursor_buffer: Option<CursorImageBuffer>,
     pub cairo_t: cairo::Context,
@@ -277,7 +277,7 @@ impl AreaInfo {
         self.height_f64() as i32
     }
 
-    /// caculate the real start position
+    /// calculate the real start position
     pub fn left_top_point(&self) -> (i32, i32) {
         (
             self.start_x.min(self.end_x) as i32,
@@ -285,7 +285,7 @@ impl AreaInfo {
         )
     }
 
-    /// you can get the info of the choosed screen
+    /// you can get the info of the chosen screen
     pub fn selected_screen_info(&self) -> &ScreenInfo {
         &self.screen_info
     }
