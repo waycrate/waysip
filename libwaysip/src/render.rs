@@ -26,7 +26,7 @@ impl LayerSurfaceInfo {
         cairoinfo.set_source_rgb(0.3_f64, 0_f64, 0_f64);
 
         let font_size = FONT_SIZE;
-        let pangolayout = pangocairo::create_layout(cairoinfo);
+        let pangolayout = pangocairo::functions::create_layout(cairoinfo);
         let mut desc = pango::FontDescription::new();
         desc.set_family(FONT_FAMILY);
         desc.set_weight(pango::Weight::Bold);
@@ -38,14 +38,14 @@ impl LayerSurfaceInfo {
         pangolayout.set_text(&name_txt);
         cairoinfo.save().unwrap();
         cairoinfo.move_to(10., 60.);
-        pangocairo::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
         cairoinfo.restore().unwrap();
 
         let pos_txt = format!("pos: {start_x}, {start_y}");
         pangolayout.set_text(&pos_txt);
         cairoinfo.save().unwrap();
         cairoinfo.move_to(10., 90.);
-        pangocairo::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
         cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
@@ -81,7 +81,7 @@ impl LayerSurfaceInfo {
         cairoinfo.set_source_rgb(1_f64, 1_f64, 1_f64);
 
         let font_size = FONT_SIZE;
-        let pangolayout = pangocairo::create_layout(cairoinfo);
+        let pangolayout = pangocairo::functions::create_layout(cairoinfo);
         let mut desc = pango::FontDescription::new();
         desc.set_family(FONT_FAMILY);
         desc.set_weight(pango::Weight::Normal);
@@ -100,7 +100,7 @@ impl LayerSurfaceInfo {
         pangolayout.set_text(text.as_str());
         cairoinfo.save().unwrap();
         cairoinfo.move_to(relate_end_x + 10., relate_end_y + 10.);
-        pangocairo::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
         cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
