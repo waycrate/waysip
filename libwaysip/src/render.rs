@@ -14,7 +14,7 @@ impl LayerSurfaceInfo {
         (width, height): (i32, i32),
         (start_x, start_y): (i32, i32),
         name: &str,
-        descriptin: &str,
+        description: &str,
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
@@ -34,7 +34,7 @@ impl LayerSurfaceInfo {
         desc.set_size(font_size * pango::SCALE);
         pangolayout.set_font_description(Some(&desc));
 
-        let name_txt = format!("{name}  {descriptin}");
+        let name_txt = format!("{name}  {description}");
         pangolayout.set_text(&name_txt);
         cairoinfo.save().unwrap();
         cairoinfo.move_to(10., 60.);
