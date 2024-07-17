@@ -24,7 +24,7 @@ wayland-protocols-wlr = { version = "0.2.0", default-features = false, features 
 	"client",
 ] }
 
-cairo-rs = "0.19.4"
+cairo-rs = "0.20.0"
 pango = "0.19.5"
 pangocairo = "0.19.2"
 
