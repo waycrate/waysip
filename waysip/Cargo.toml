@@ -12,7 +12,7 @@ readme.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.10", features = ["derive"] }
+clap = { version = "4.5.11", features = ["derive"] }
 libwaysip.workspace = true
 tracing.workspace = true
 tracing-subscriber = "0.3"
