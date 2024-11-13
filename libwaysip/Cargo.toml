@@ -29,4 +29,4 @@ pango = "0.20.0"
 pangocairo = "0.20.0"
 
 memmap2 = "0.9.4"
-thiserror = "1.0.63"
+thiserror = "2.0.3"
