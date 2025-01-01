@@ -7,7 +7,7 @@ use wayland_protocols::{
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1;
 
 /// You are allow to choose three actions of waysip, include area selection, point selection, and
-/// select sreen
+/// select screen
 #[derive(Debug, Clone, Copy, Default)]
 pub enum SelectionType {
     #[default]
