@@ -84,7 +84,7 @@ fn get_area_inner(
         .bind::<WlShm, _, _>(&qh, 1..=1, ())
         .map_err(WaySipError::NotSupportedProtocol)?;
 
-    let cursor_buffer = get_cursor_buffer(&connection, &shm);
+    let cursor_buffer = get_cursor_buffer(connection, &shm);
 
     if cursor_manager.is_none() && cursor_buffer.is_none() {
         return Err(WaySipError::CursorThemeFetchFailed);
