@@ -188,5 +188,6 @@ fn get_area_inner(
             .map_err(WaySipError::DispatchError)?;
     }
 
+    layer_shell.destroy();
     Ok(state.area_info())
 }
