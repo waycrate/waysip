@@ -37,7 +37,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
 
 pub struct WaysipConnection<'a> {
     pub connection: &'a Connection,
-    pub globals: GlobalList,
+    pub globals: &'a GlobalList,
 }
 
 /// get the selected area
@@ -45,19 +45,26 @@ pub fn get_area(
     waysip_connection: Option<WaysipConnection>,
     selection_type: SelectionType,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
-    let (connection, globals) = match waysip_connection {
+    match waysip_connection {
         Some(WaysipConnection {
             connection,
             globals,
-        }) => (connection.clone(), globals),
+        }) => get_area_inner(connection, globals, selection_type),
         None => {
             let connection =
                 Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
             let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
                 .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-            (connection, globals)
+            get_area_inner(&connection, &globals, selection_type)
         }
-    };
+    }
+}
+
+fn get_area_inner(
+    connection: &Connection,
+    globals: &GlobalList,
+    selection_type: SelectionType,
+) -> Result<Option<state::AreaInfo>, WaySipError> {
     let mut state = state::WaysipState::new(selection_type);
 
     let mut event_queue = connection.new_event_queue::<state::WaysipState>();
