@@ -190,9 +190,12 @@ fn get_area_inner(
 
     layer_shell.destroy();
     for surface in &state.wl_surfaces {
+        surface.layer.destroy();
         surface.wl_surface.destroy();
         surface.cursor_surface.destroy();
         surface.buffer.destroy();
     }
+    state.wl_surfaces.clear();
+    let _ = event_queue.roundtrip(&mut state);
     Ok(state.area_info())
 }

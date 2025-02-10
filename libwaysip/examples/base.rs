@@ -28,7 +28,7 @@ fn main() {
         get_area(
             Some(WaysipConnection {
                 connection: &connection,
-                globals
+                globals: &globals
             }),
             SelectionType::Area
         )
