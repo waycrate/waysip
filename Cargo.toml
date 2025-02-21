@@ -7,7 +7,7 @@ authors = [
 	"Decodertalkers <aakari@tutanota.com>",
 	"Aakash Sen Sharma <aakashsensharma@gmail.com>",
 ]
-edition = "2021"
+edition = "2024"
 version = "0.2.7"
 license = "MIT"
 description = "Wayland native (zwlr_layer_shell) area selection client"

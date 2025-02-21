@@ -1,5 +1,5 @@
 use thiserror::Error;
-use wayland_client::{globals::BindError, DispatchError};
+use wayland_client::{DispatchError, globals::BindError};
 /// Error
 /// it describe three kind of error
 /// 1. failed when init

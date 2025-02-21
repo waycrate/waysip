@@ -8,13 +8,13 @@ use error::WaySipError;
 pub use state::SelectionType;
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
-    globals::{registry_queue_init, GlobalList},
+    Connection,
+    globals::{GlobalList, registry_queue_init},
     protocol::{
         wl_compositor::WlCompositor,
         wl_seat::WlSeat,
         wl_shm::{self, WlShm},
     },
-    Connection,
 };
 use wayland_cursor::{CursorImageBuffer, CursorTheme};
 use wayland_protocols::{
@@ -73,8 +73,8 @@ fn get_area_inner(
     let wmcompositer = globals
         .bind::<WlCompositor, _, _>(&qh, 1..=5, ())
         .map_err(WaySipError::NotSupportedProtocol)?; // so the first
-                                                      // thing is to
-                                                      // get WlCompositor
+    // thing is to
+    // get WlCompositor
 
     let cursor_manager = globals
         .bind::<WpCursorShapeManagerV1, _, _>(&qh, 1..=1, ())
@@ -97,7 +97,7 @@ fn get_area_inner(
         .map_err(WaySipError::NotSupportedProtocol)?;
 
     let _ = connection.display().get_registry(&qh, ()); // so if you want WlOutput, you need to
-                                                        // register this
+    // register this
 
     event_queue
         .blocking_dispatch(&mut state)
@@ -136,7 +136,7 @@ fn get_area_inner(
         .enumerate()
     {
         let wl_surface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
-                                                               // we need to create more
+        // we need to create more
         let (init_w, init_h) = (zwlinfo.width, zwlinfo.height);
         // this example is ok for both xdg_surface and layer_shell
 
@@ -154,9 +154,9 @@ fn get_area_inner(
         layer.set_size(init_w as u32, init_h as u32);
 
         wl_surface.commit(); // so during the init Configure of the shell, a buffer, atleast a buffer is needed.
-                             // and if you need to reconfigure it, you need to commit the wl_surface again
-                             // so because this is just an example, so we just commit it once
-                             // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
+        // and if you need to reconfigure it, you need to commit the wl_surface again
+        // so because this is just an example, so we just commit it once
+        // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
         let mut file = tempfile::tempfile().unwrap();
         let cairo_t = render::draw_ui(&mut file, (init_w, init_h));
         let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());

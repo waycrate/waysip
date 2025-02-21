@@ -1,8 +1,8 @@
-use libwaysip::{get_area, SelectionType, WaysipConnection};
+use libwaysip::{SelectionType, WaysipConnection, get_area};
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::wl_registry,
     Connection, Dispatch, QueueHandle,
+    globals::{GlobalListContents, registry_queue_init},
+    protocol::wl_registry,
 };
 
 struct State {}
