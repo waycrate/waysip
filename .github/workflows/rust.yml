@@ -15,12 +15,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: dtolnay/rust-toolchain@stable
     - uses: actions/checkout@v4
     - name: Install deps
       run: sudo apt install -y libpango1.0-dev libcairo2-dev
-
+    - name: Run clippy check
+      run: cargo clippy -- -D warnings
+    - name: Run fmt check
+      run: cargo fmt --all -- --check
     - name: Build
       run: cargo build --verbose --release
-
     - name: Run tests
       run: cargo test --verbose --release
