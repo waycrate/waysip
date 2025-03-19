@@ -10,7 +10,7 @@ keywords.workspace = true
 readme.workspace = true
 
 [dependencies]
-tempfile = "3.18.0"
+tempfile = "3.19.0"
 wayland-client = "0.31.5"
 wayland-cursor = "0.31.5"
 
