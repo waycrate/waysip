@@ -3,10 +3,13 @@ mod render;
 
 pub mod error;
 pub mod state;
+mod utils;
+pub use utils::*;
 
 use error::WaySipError;
+use render::UiInit;
 pub use state::SelectionType;
-use std::os::unix::prelude::AsFd;
+use std::{mem::ManuallyDrop, os::unix::prelude::AsFd};
 use wayland_client::{
     Connection,
     globals::{GlobalList, registry_queue_init},
@@ -153,35 +156,34 @@ fn get_area_inner(
         layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
         layer.set_size(init_w as u32, init_h as u32);
 
-        wl_surface.commit(); // so during the init Configure of the shell, a buffer, atleast a buffer is needed.
+        wl_surface.commit(); // so during the init Configure of the shell, a buffer, at least a buffer is needed.
         // and if you need to reconfigure it, you need to commit the wl_surface again
         // so because this is just an example, so we just commit it once
         // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
         let mut file = tempfile::tempfile().unwrap();
-        let cairo_t = render::draw_ui(&mut file, (init_w, init_h));
+        let UiInit {
+            context: cairo_t,
+            stride,
+        } = render::draw_ui(&mut file, (init_w, init_h));
         let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());
 
-        let buffer = pool.create_buffer(
-            0,
-            init_w,
-            init_h,
-            init_w * 4,
-            wl_shm::Format::Argb8888,
-            &qh,
-            (),
-        );
+        let buffer =
+            pool.create_buffer(0, init_w, init_h, stride, wl_shm::Format::Argb8888, &qh, ());
 
         let cursor_surface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
         state.wl_surfaces.push(state::LayerSurfaceInfo {
             layer,
             wl_surface,
             cursor_surface,
-            buffer,
+            buffer: ManuallyDrop::new(buffer),
             cursor_buffer: cursor_buffer.clone(),
-            cairo_t,
+            cairo_t: ManuallyDrop::new(cairo_t),
             inited: false,
+            buffer_busy: true,
+            stride,
         });
     }
+    state.shm = Some(shm);
 
     state.qh = Some(qh);
     while state.running {

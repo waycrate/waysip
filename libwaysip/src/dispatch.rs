@@ -1,9 +1,11 @@
+use std::ops::Deref;
+
 use crate::state::{self, LayerSurfaceInfo, WaysipState};
 use wayland_client::{
     Connection, Dispatch, Proxy, WEnum, delegate_noop,
     globals::GlobalListContents,
     protocol::{
-        wl_buffer::WlBuffer,
+        wl_buffer::{self, WlBuffer},
         wl_callback::{self, WlCallback},
         wl_compositor::WlCompositor,
         wl_keyboard, wl_output, wl_pointer, wl_registry,
@@ -37,10 +39,16 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaysipState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let zwlr_layer_surface_v1::Event::Configure { serial, .. } = event {
+        if let zwlr_layer_surface_v1::Event::Configure {
+            serial,
+            width,
+            height,
+        } = event
+        {
             surface.ack_configure(serial);
 
-            state.init(surface);
+            state.ensure_buffer(surface, (width, height));
+            state.ensure_init(surface);
             state.redraw(surface);
         }
     }
@@ -312,6 +320,28 @@ impl Dispatch<WlCallback, usize> for state::WaysipState {
     }
 }
 
+impl Dispatch<WlBuffer, ()> for state::WaysipState {
+    fn event(
+        state: &mut Self,
+        buffer: &WlBuffer,
+        event: <WlBuffer as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &wayland_client::QueueHandle<Self>,
+    ) {
+        if let wl_buffer::Event::Release = event {
+            let Some(info) = state
+                .wl_surfaces
+                .iter_mut()
+                .find(|info| info.buffer.deref() == buffer)
+            else {
+                return;
+            };
+            info.buffer_busy = true;
+        }
+    }
+}
+
 delegate_noop!(WaysipState: ignore WlCompositor); // WlCompositor is need to create a surface
 delegate_noop!(WaysipState: ignore WlSurface); // surface is the base needed to show buffer
 //
@@ -319,7 +349,6 @@ delegate_noop!(WaysipState: ignore WlShm); // shm is used to create buffer pool
 delegate_noop!(WaysipState: ignore XdgToplevel); // so it is the same with layer_shell, private a
 // place for surface
 delegate_noop!(WaysipState: ignore WlShmPool); // so it is pool, created by wl_shm
-delegate_noop!(WaysipState: ignore WlBuffer); // buffer show the picture
 delegate_noop!(WaysipState: ignore ZwlrLayerShellV1); // it is similar with xdg_toplevel, also the
 // ext-session-shell
 delegate_noop!(WaysipState: ignore ZxdgOutputManagerV1);

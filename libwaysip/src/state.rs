@@ -1,6 +1,13 @@
+use std::{mem::ManuallyDrop, os::fd::AsFd};
+
 use wayland_client::{
     QueueHandle,
-    protocol::{wl_buffer::WlBuffer, wl_output::WlOutput, wl_surface::WlSurface},
+    protocol::{
+        wl_buffer::WlBuffer,
+        wl_output::WlOutput,
+        wl_shm::{self, WlShm},
+        wl_surface::WlSurface,
+    },
 };
 use wayland_cursor::CursorImageBuffer;
 use wayland_protocols::{
@@ -8,6 +15,11 @@ use wayland_protocols::{
     xdg::xdg_output::zv1::client::zxdg_output_v1,
 };
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1;
+
+use crate::{
+    Point, Size,
+    render::{self, UiInit},
+};
 
 /// You are allow to choose three actions of waysip, include area selection, point selection, and
 /// select screen
@@ -77,8 +89,8 @@ impl WlOutputInfo {
         &self.output
     }
 
-    pub fn get_size(&self) -> (i32, i32) {
-        self.size
+    pub fn get_size(&self) -> Size {
+        self.size.into()
     }
 
     pub fn get_name(&self) -> &str {
@@ -110,8 +122,11 @@ impl ScreenInfo {
     }
 
     /// get the logical size of the screen
-    pub fn get_size(&self) -> (i32, i32) {
-        (self.width, self.height)
+    pub fn get_size(&self) -> Size {
+        Size {
+            width: self.width,
+            height: self.height,
+        }
     }
 
     /// get the name of the screen
@@ -125,8 +140,11 @@ impl ScreenInfo {
     }
 
     /// get the logical position of the screen
-    pub fn get_position(&self) -> (i32, i32) {
-        (self.start_x, self.start_y)
+    pub fn get_position(&self) -> Point {
+        Point {
+            x: self.start_x,
+            y: self.start_y,
+        }
     }
 }
 
@@ -142,6 +160,7 @@ pub struct WaysipState {
     pub end_pos: Option<(f64, f64)>,
     pub current_screen: usize,
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub shm: Option<WlShm>,
     pub qh: Option<QueueHandle<Self>>,
 }
 
@@ -159,6 +178,7 @@ impl WaysipState {
             current_screen: 0,
             cursor_manager: None,
             qh: None,
+            shm: None,
         }
     }
 
@@ -170,7 +190,46 @@ impl WaysipState {
         matches!(self.selection_type, SelectionType::Screen)
     }
 
-    pub fn init(&mut self, surface: &ZwlrLayerSurfaceV1) {
+    pub fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
+        let Some(surface_info) = self
+            .wl_surfaces
+            .iter_mut()
+            .find(|info| info.layer == *surface)
+        else {
+            return;
+        };
+        if surface_info.buffer_busy {
+            return;
+        }
+        let mut file = tempfile::tempfile().unwrap();
+        let qh = self.qh.as_ref().unwrap();
+        let width = width as i32;
+        let height = height as i32;
+        let UiInit {
+            context: cairo_t,
+            stride,
+        } = render::draw_ui(&mut file, (width, width));
+        let pool =
+            self.shm
+                .as_ref()
+                .unwrap()
+                .create_pool(file.as_fd(), width * height * 4, qh, ());
+
+        let buffer =
+            pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, ());
+        unsafe {
+            let old_buffer = ManuallyDrop::take(&mut surface_info.buffer);
+            old_buffer.destroy();
+            let old_cairo_t = ManuallyDrop::take(&mut surface_info.cairo_t);
+            drop(old_cairo_t);
+        }
+        surface_info.buffer = ManuallyDrop::new(buffer);
+        surface_info.cairo_t = ManuallyDrop::new(cairo_t);
+        surface_info.buffer_busy = true;
+        surface_info.inited = false;
+    }
+
+    pub fn ensure_init(&mut self, surface: &ZwlrLayerSurfaceV1) {
         let Some(surface_info) = self
             .wl_surfaces
             .iter_mut()
@@ -263,10 +322,12 @@ pub struct LayerSurfaceInfo {
     pub layer: ZwlrLayerSurfaceV1,
     pub wl_surface: WlSurface,
     pub cursor_surface: WlSurface,
-    pub buffer: WlBuffer,
+    pub buffer: ManuallyDrop<WlBuffer>,
     pub cursor_buffer: Option<CursorImageBuffer>,
-    pub cairo_t: cairo::Context,
+    pub cairo_t: ManuallyDrop<cairo::Context>,
+    pub stride: i32,
     pub inited: bool,
+    pub buffer_busy: bool,
 }
 
 /// describe the information of the area
@@ -286,6 +347,20 @@ impl AreaInfo {
         (self.end_x - self.start_x).abs()
     }
 
+    pub fn size(&self) -> Size {
+        Size {
+            width: self.width(),
+            height: self.height(),
+        }
+    }
+
+    pub fn size_f(&self) -> Size<f64> {
+        Size {
+            width: self.height_f64(),
+            height: self.width_f64(),
+        }
+    }
+
     /// provide the width of the area as i32
     pub fn width(&self) -> i32 {
         self.width_f64() as i32
@@ -302,11 +377,11 @@ impl AreaInfo {
     }
 
     /// calculate the real start position
-    pub fn left_top_point(&self) -> (i32, i32) {
-        (
-            self.start_x.min(self.end_x) as i32,
-            (self.start_y.min(self.end_y)) as i32,
-        )
+    pub fn left_top_point(&self) -> Point {
+        Point {
+            x: self.start_x.min(self.end_x) as i32,
+            y: (self.start_y.min(self.end_y)) as i32,
+        }
     }
 
     /// you can get the info of the chosen screen

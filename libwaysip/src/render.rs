@@ -114,7 +114,13 @@ impl LayerSurfaceInfo {
     }
 }
 
-pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> Context {
+#[derive(Debug)]
+pub struct UiInit {
+    pub context: Context,
+    pub stride: i32,
+}
+
+pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> UiInit {
     let cairo_fmt = Format::ARgb32;
     let stride = cairo_fmt.stride_for_width(width as u32).unwrap();
     tmp.set_len((stride * height) as u64).unwrap();
@@ -125,5 +131,8 @@ pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> Context {
     let cairoinfo = cairo::Context::new(&surface).unwrap();
     cairoinfo.set_source_rgba(0.4_f64, 0.4_f64, 0.4_f64, 0.4);
     cairoinfo.paint().unwrap();
-    cairoinfo
+    UiInit {
+        context: cairoinfo,
+        stride,
+    }
 }

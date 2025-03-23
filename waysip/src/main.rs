@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{SelectionType, get_area};
+use libwaysip::{Point, SelectionType, Size, get_area};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -24,9 +24,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Cli::parse();
 
-    // TODO: Enable tracing
-    // TODO: Make errors go through the cli into output
-
     macro_rules! get_info {
         ($x: expr) => {
             match get_area(None, $x) {
@@ -47,12 +44,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args {
         Cli::Point => {
             let info = get_info!(SelectionType::Point);
-            let (x, y) = info.left_top_point();
+            let Point { x, y } = info.left_top_point();
             println!("{x},{y} 1x1");
         }
         Cli::Dimensions => {
             let info = get_info!(SelectionType::Area);
-            let (x, y) = info.left_top_point();
+            let Point { x, y } = info.left_top_point();
             let width = info.width();
             let height = info.height();
             println!("{x},{y} {width}x{height}",);
@@ -60,11 +57,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Cli::Screen => {
             let info = get_info!(SelectionType::Screen);
             let screen_info = info.selected_screen_info();
-            let (w, h) = screen_info.get_size();
+            let Size {
+                width: w,
+                height: h,
+            } = screen_info.get_size();
             let name = screen_info.get_name();
             let description = screen_info.get_description();
             let wlinfo = screen_info.get_outputinfo();
-            let (wl_w, wl_h) = wlinfo.get_size();
+            let Size {
+                width: wl_w,
+                height: wl_h,
+            } = wlinfo.get_size();
             println!("Screen : {name} {description}");
             println!("logic_width: {w}, logic_height: {h}");
             println!("width: {wl_w}, height: {wl_h}");
@@ -72,8 +75,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Cli::Output => {
             let info = get_info!(SelectionType::Screen);
             let screen_info = info.selected_screen_info();
-            let (x, y) = screen_info.get_position();
-            let (width, height) = screen_info.get_size();
+            let Point { x, y } = screen_info.get_position();
+            let Size { width, height } = screen_info.get_size();
             println!("{x},{y} {width}x{height}",);
         }
     }
