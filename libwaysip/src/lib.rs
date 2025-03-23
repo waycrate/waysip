@@ -9,7 +9,7 @@ pub use utils::*;
 use error::WaySipError;
 use render::UiInit;
 pub use state::SelectionType;
-use std::{mem::ManuallyDrop, os::unix::prelude::AsFd};
+use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
     globals::{GlobalList, registry_queue_init},
@@ -175,9 +175,9 @@ fn get_area_inner(
             layer,
             wl_surface,
             cursor_surface,
-            buffer: ManuallyDrop::new(buffer),
+            buffer,
             cursor_buffer: cursor_buffer.clone(),
-            cairo_t: ManuallyDrop::new(cairo_t),
+            cairo_t,
             inited: false,
             buffer_busy: true,
             stride,

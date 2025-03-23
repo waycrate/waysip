@@ -1,4 +1,4 @@
-use std::{mem::ManuallyDrop, os::fd::AsFd};
+use std::os::fd::AsFd;
 
 use wayland_client::{
     QueueHandle,
@@ -216,14 +216,12 @@ impl WaysipState {
             .create_pool(file.as_fd(), width * height * 4, qh, ());
 
         let buffer = pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, ());
-        unsafe {
-            let old_buffer = ManuallyDrop::take(&mut surface_info.buffer);
-            old_buffer.destroy();
-            let old_cairo_t = ManuallyDrop::take(&mut surface_info.cairo_t);
-            drop(old_cairo_t);
-        }
-        surface_info.buffer = ManuallyDrop::new(buffer);
-        surface_info.cairo_t = ManuallyDrop::new(cairo_t);
+
+        let old_buffer = std::mem::replace(&mut surface_info.buffer, buffer);
+        let old_cairo_t = std::mem::replace(&mut surface_info.cairo_t, cairo_t);
+        old_buffer.destroy();
+        drop(old_cairo_t);
+
         surface_info.buffer_busy = true;
         surface_info.inited = false;
     }
@@ -321,9 +319,9 @@ pub struct LayerSurfaceInfo {
     pub layer: ZwlrLayerSurfaceV1,
     pub wl_surface: WlSurface,
     pub cursor_surface: WlSurface,
-    pub buffer: ManuallyDrop<WlBuffer>,
+    pub buffer: WlBuffer,
     pub cursor_buffer: Option<CursorImageBuffer>,
-    pub cairo_t: ManuallyDrop<cairo::Context>,
+    pub cairo_t: cairo::Context,
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,

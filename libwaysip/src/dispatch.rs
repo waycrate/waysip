@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::state::{self, LayerSurfaceInfo, WaysipState};
 use wayland_client::{
     Connection, Dispatch, Proxy, WEnum, delegate_noop,
@@ -333,7 +331,7 @@ impl Dispatch<WlBuffer, ()> for state::WaysipState {
             let Some(info) = state
                 .wl_surfaces
                 .iter_mut()
-                .find(|info| info.buffer.deref() == buffer)
+                .find(|info| info.buffer == *buffer)
             else {
                 return;
             };
