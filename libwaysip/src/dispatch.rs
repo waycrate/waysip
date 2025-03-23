@@ -337,7 +337,7 @@ impl Dispatch<WlBuffer, ()> for state::WaysipState {
             else {
                 return;
             };
-            info.buffer_busy = true;
+            info.buffer_busy = false;
         }
     }
 }
