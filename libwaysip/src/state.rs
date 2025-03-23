@@ -209,14 +209,13 @@ impl WaysipState {
             context: cairo_t,
             stride,
         } = render::draw_ui(&mut file, (width, width));
-        let pool =
-            self.shm
-                .as_ref()
-                .unwrap()
-                .create_pool(file.as_fd(), width * height * 4, qh, ());
+        let pool = self
+            .shm
+            .as_ref()
+            .unwrap()
+            .create_pool(file.as_fd(), width * height * 4, qh, ());
 
-        let buffer =
-            pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, ());
+        let buffer = pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, ());
         unsafe {
             let old_buffer = ManuallyDrop::take(&mut surface_info.buffer);
             old_buffer.destroy();
