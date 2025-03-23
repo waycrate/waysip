@@ -179,9 +179,11 @@ fn get_area_inner(
             buffer,
             cursor_buffer: cursor_buffer.clone(),
             cairo_t,
+            inited: false,
         });
     }
 
+    state.qh = Some(qh);
     while state.running {
         event_queue
             .blocking_dispatch(&mut state)

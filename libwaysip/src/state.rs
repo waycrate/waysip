@@ -1,4 +1,7 @@
-use wayland_client::protocol::{wl_buffer::WlBuffer, wl_output::WlOutput, wl_surface::WlSurface};
+use wayland_client::{
+    QueueHandle,
+    protocol::{wl_buffer::WlBuffer, wl_output::WlOutput, wl_surface::WlSurface},
+};
 use wayland_cursor::CursorImageBuffer;
 use wayland_protocols::{
     wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
@@ -139,6 +142,7 @@ pub struct WaysipState {
     pub end_pos: Option<(f64, f64)>,
     pub current_screen: usize,
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub qh: Option<QueueHandle<Self>>,
 }
 
 impl WaysipState {
@@ -154,6 +158,7 @@ impl WaysipState {
             end_pos: None,
             current_screen: 0,
             cursor_manager: None,
+            qh: None,
         }
     }
 
@@ -165,50 +170,68 @@ impl WaysipState {
         matches!(self.selection_type, SelectionType::Screen)
     }
 
-    pub fn redraw_screen(&self) {
-        for (
-            (index, info),
-            ZXdgOutputInfo {
-                width,
-                height,
-                start_x,
-                start_y,
-                name,
-                description,
-                ..
-            },
-        ) in self
+    pub fn init(&mut self, surface: &ZwlrLayerSurfaceV1) {
+        let Some(surface_info) = self
+            .wl_surfaces
+            .iter_mut()
+            .find(|info| info.layer == *surface)
+        else {
+            return;
+        };
+        if surface_info.inited {
+            return;
+        }
+        surface_info.init_commit();
+        surface_info.inited = true;
+    }
+
+    pub fn commit(&self) {
+        let surface = &self.wl_surfaces[self.current_screen];
+        surface
+            .wl_surface
+            .frame(self.qh.as_ref().unwrap(), self.current_screen);
+        surface.wl_surface.commit();
+    }
+
+    pub fn redraw_current_surface(&self) {
+        let surface_info = &self.wl_surfaces[self.current_screen];
+        self.redraw(&surface_info.layer);
+    }
+
+    pub fn redraw(&self, surface: &ZwlrLayerSurfaceV1) {
+        let Some(screen_index) = self
             .wl_surfaces
             .iter()
-            .enumerate()
-            .zip(self.zxdg_outputs.iter())
-        {
+            .position(|info| info.layer == *surface)
+        else {
+            return;
+        };
+
+        let info = &self.wl_surfaces[screen_index];
+        let ZXdgOutputInfo {
+            width,
+            height,
+            start_x,
+            start_y,
+            name,
+            description,
+            ..
+        } = &self.zxdg_outputs[screen_index];
+
+        if self.is_screen() {
             info.redraw_select_screen(
-                self.current_screen == index,
+                self.current_screen == screen_index,
                 (*width, *height),
                 (*start_x, *start_y),
                 name,
                 description,
             );
-        }
-    }
-    pub fn redraw(&self) {
-        if self.start_pos.is_none() {
-            return;
-        }
-        let (pos_x, pos_y) = self.start_pos.unwrap();
-        for (
-            ZXdgOutputInfo {
-                width,
-                height,
-                start_x,
-                start_y,
-                ..
-            },
-            layershell_info,
-        ) in self.zxdg_outputs.iter().zip(self.wl_surfaces.iter())
-        {
-            layershell_info.redraw(
+        } else {
+            if self.start_pos.is_none() {
+                return;
+            }
+            let (pos_x, pos_y) = self.start_pos.unwrap();
+            info.redraw(
                 (pos_x, pos_y),
                 self.current_pos,
                 (*start_x, *start_y),
@@ -243,6 +266,7 @@ pub struct LayerSurfaceInfo {
     pub buffer: WlBuffer,
     pub cursor_buffer: Option<CursorImageBuffer>,
     pub cairo_t: cairo::Context,
+    pub inited: bool,
 }
 
 /// describe the information of the area

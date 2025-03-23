@@ -2,11 +2,11 @@ use crate::state::{self, LayerSurfaceInfo, WaysipState};
 use wayland_client::{
     Connection, Dispatch, Proxy, WEnum, delegate_noop,
     globals::GlobalListContents,
-    protocol::wl_output,
     protocol::{
         wl_buffer::WlBuffer,
+        wl_callback::{self, WlCallback},
         wl_compositor::WlCompositor,
-        wl_keyboard, wl_pointer, wl_registry,
+        wl_keyboard, wl_output, wl_pointer, wl_registry,
         wl_seat::{self},
         wl_shm::WlShm,
         wl_shm_pool::WlShmPool,
@@ -39,14 +39,9 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaysipState {
     ) {
         if let zwlr_layer_surface_v1::Event::Configure { serial, .. } = event {
             surface.ack_configure(serial);
-            let Some(LayerSurfaceInfo {
-                wl_surface, buffer, ..
-            }) = state.wl_surfaces.iter().find(|info| info.layer == *surface)
-            else {
-                return;
-            };
-            wl_surface.attach(Some(buffer), 0, 0);
-            wl_surface.commit();
+
+            state.init(surface);
+            state.redraw(surface);
         }
     }
 }
@@ -232,7 +227,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     }
                     _ => {}
                 }
-                dispatch_state.redraw();
+                dispatch_state.commit();
             }
             wl_pointer::Event::Enter {
                 serial,
@@ -278,11 +273,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     );
                     cursor_surface.commit();
                 }
-                if dispatch_state.is_screen() {
-                    dispatch_state.redraw_screen();
-                } else {
-                    dispatch_state.redraw();
-                }
+
+                dispatch_state.commit();
             }
             wl_pointer::Event::Motion {
                 surface_x,
@@ -294,10 +286,28 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 dispatch_state.current_pos =
                     (surface_x + start_x as f64, surface_y + start_y as f64);
                 if dispatch_state.is_area() {
-                    dispatch_state.redraw();
+                    dispatch_state.commit();
                 }
             }
             _ => {}
+        }
+    }
+}
+
+impl Dispatch<WlCallback, usize> for state::WaysipState {
+    fn event(
+        state: &mut Self,
+        _proxy: &WlCallback,
+        event: <WlCallback as Proxy>::Event,
+        screen_index: &usize,
+        _conn: &Connection,
+        _qhandle: &wayland_client::QueueHandle<Self>,
+    ) {
+        if let wl_callback::Event::Done { .. } = event {
+            if *screen_index != state.current_screen {
+                return;
+            }
+            state.redraw_current_surface();
         }
     }
 }

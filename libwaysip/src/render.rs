@@ -8,6 +8,11 @@ const FONT_FAMILY: &str = "Sans";
 const FONT_SIZE: i32 = 20;
 
 impl LayerSurfaceInfo {
+    pub fn init_commit(&self) {
+        self.wl_surface.attach(Some(&self.buffer), 0, 0);
+        self.wl_surface.commit();
+    }
+
     pub fn redraw_select_screen(
         &self,
         is_selected: bool,
