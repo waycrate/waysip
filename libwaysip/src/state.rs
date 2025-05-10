@@ -1,4 +1,4 @@
-use std::os::fd::AsFd;
+use std::{cell::OnceCell, os::fd::AsFd};
 
 use wayland_client::{
     QueueHandle,
@@ -17,7 +17,7 @@ use wayland_protocols::{
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1;
 
 use crate::{
-    Point, Size,
+    Position, Size,
     render::{self, UiInit},
 };
 
@@ -31,13 +31,11 @@ pub enum SelectionType {
     Screen,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ZXdgOutputInfo {
     pub zxdg_output: zxdg_output_v1::ZxdgOutputV1,
-    pub width: i32,
-    pub height: i32,
-    pub start_x: i32,
-    pub start_y: i32,
+    pub size: Size,
+    pub start_position: Position,
     pub name: String,
     pub description: String,
 }
@@ -46,23 +44,13 @@ impl ZXdgOutputInfo {
     pub fn new(zxdgoutput: zxdg_output_v1::ZxdgOutputV1) -> Self {
         Self {
             zxdg_output: zxdgoutput,
-            width: 0,
-            height: 0,
-            start_x: 0,
-            start_y: 0,
+            size: Size {
+                width: 0,
+                height: 0,
+            },
+            start_position: Position { x: 0, y: 0 },
             name: "".to_string(),
             description: "".to_string(),
-        }
-    }
-    pub fn get_screen_info(&self, output_info: WlOutputInfo) -> ScreenInfo {
-        ScreenInfo {
-            output_info,
-            start_x: self.start_x,
-            start_y: self.start_y,
-            width: self.width,
-            height: self.height,
-            name: self.name.clone(),
-            description: self.description.clone(),
         }
     }
 }
@@ -72,25 +60,53 @@ pub struct WlOutputInfo {
     pub output: WlOutput,
     pub description: String,
     pub name: String,
-    pub size: (i32, i32),
+    pub size: Size,
+    pub xdg_output_info: OnceCell<ZXdgOutputInfo>,
 }
 
 impl WlOutputInfo {
+    pub(crate) fn xdg_output_info_mut(&mut self) -> &mut ZXdgOutputInfo {
+        self.xdg_output_info.get_mut().expect("should inited")
+    }
+    pub(crate) fn xdg_output_info(&self) -> &ZXdgOutputInfo {
+        self.xdg_output_info.get().expect("should inited")
+    }
+    pub(crate) fn zxdg_output(&self) -> &zxdg_output_v1::ZxdgOutputV1 {
+        &self
+            .xdg_output_info
+            .get()
+            .expect("should inited")
+            .zxdg_output
+    }
     pub fn new(output: WlOutput) -> Self {
         Self {
             output,
             description: "".to_string(),
             name: "".to_string(),
-            size: (0, 0),
+            size: Size {
+                width: 0,
+                height: 0,
+            },
+            xdg_output_info: OnceCell::new(),
         }
     }
-
+    pub fn get_screen_info(&self) -> ScreenInfo {
+        let xdg_output_info = self.xdg_output_info();
+        ScreenInfo {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            position: xdg_output_info.start_position,
+            output_size: self.size,
+            wl_output: self.output.clone(),
+            screen_size: xdg_output_info.size,
+        }
+    }
     pub fn get_output(&self) -> &WlOutput {
         &self.output
     }
 
     pub fn get_size(&self) -> Size {
-        self.size.into()
+        self.size
     }
 
     pub fn get_name(&self) -> &str {
@@ -106,27 +122,28 @@ impl WlOutputInfo {
 /// binded by the screen
 #[derive(Debug)]
 pub struct ScreenInfo {
-    pub output_info: WlOutputInfo,
-    pub start_x: i32,
-    pub start_y: i32,
-    pub width: i32,
-    pub height: i32,
+    pub position: Position,
+    pub screen_size: Size,
+    pub wl_output: WlOutput,
+    pub output_size: Size,
     pub name: String,
     pub description: String,
 }
 
 impl ScreenInfo {
     /// get the binding output
-    pub fn get_outputinfo(&self) -> &WlOutputInfo {
-        &self.output_info
+    pub fn get_wloutput(&self) -> &WlOutput {
+        &self.wl_output
+    }
+
+    /// get the logical size of the wloutput
+    pub fn get_wloutput_size(&self) -> Size {
+        self.output_size
     }
 
     /// get the logical size of the screen
     pub fn get_size(&self) -> Size {
-        Size {
-            width: self.width,
-            height: self.height,
-        }
+        self.screen_size
     }
 
     /// get the name of the screen
@@ -140,24 +157,20 @@ impl ScreenInfo {
     }
 
     /// get the logical position of the screen
-    pub fn get_position(&self) -> Point {
-        Point {
-            x: self.start_x,
-            y: self.start_y,
-        }
+    pub fn get_position(&self) -> Position {
+        self.position
     }
 }
 
 #[derive(Debug)]
 pub struct WaysipState {
-    pub outputs: Vec<WlOutputInfo>,
-    pub zxdg_outputs: Vec<ZXdgOutputInfo>,
+    pub wloutput_infos: Vec<WlOutputInfo>,
     pub running: bool,
     pub selection_type: SelectionType,
     pub wl_surfaces: Vec<LayerSurfaceInfo>,
-    pub current_pos: (f64, f64),
-    pub start_pos: Option<(f64, f64)>,
-    pub end_pos: Option<(f64, f64)>,
+    pub current_pos: Position<f64>,
+    pub start_pos: Option<Position<f64>>,
+    pub end_pos: Option<Position<f64>>,
     pub current_screen: usize,
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
     pub shm: Option<WlShm>,
@@ -167,12 +180,11 @@ pub struct WaysipState {
 impl WaysipState {
     pub fn new(selection_type: SelectionType) -> Self {
         WaysipState {
-            outputs: Vec::new(),
-            zxdg_outputs: Vec::new(),
+            wloutput_infos: Vec::new(),
             running: true,
             selection_type,
             wl_surfaces: Vec::new(),
-            current_pos: (0., 0.),
+            current_pos: Position { x: 0., y: 0. },
             start_pos: None,
             end_pos: None,
             current_screen: 0,
@@ -265,20 +277,18 @@ impl WaysipState {
 
         let info = &self.wl_surfaces[screen_index];
         let ZXdgOutputInfo {
-            width,
-            height,
-            start_x,
-            start_y,
+            size,
+            start_position,
             name,
             description,
             ..
-        } = &self.zxdg_outputs[screen_index];
+        } = self.wloutput_infos[screen_index].xdg_output_info();
 
         if self.is_screen() {
             info.redraw_select_screen(
                 self.current_screen == screen_index,
-                (*width, *height),
-                (*start_x, *start_y),
+                *size,
+                *start_position,
                 name,
                 description,
             );
@@ -286,12 +296,11 @@ impl WaysipState {
             if self.start_pos.is_none() {
                 return;
             }
-            let (pos_x, pos_y) = self.start_pos.unwrap();
             info.redraw(
-                (pos_x, pos_y),
+                self.start_pos.unwrap(),
                 self.current_pos,
-                (*start_x, *start_y),
-                (*width, *height),
+                *start_position,
+                *size,
             );
         }
     }
@@ -300,16 +309,18 @@ impl WaysipState {
         if self.start_pos.is_none() || self.end_pos.is_none() {
             return None;
         }
-        let (start_x, start_y) = self.start_pos.unwrap();
-        let (end_x, end_y) = self.end_pos.unwrap();
-        let output = self.outputs[self.current_screen].clone();
-        let info = &self.zxdg_outputs[self.current_screen];
+        let Position {
+            x: start_x,
+            y: start_y,
+        } = self.start_pos.unwrap();
+        let Position { x: end_x, y: end_y } = self.end_pos.unwrap();
+        let output = self.wloutput_infos[self.current_screen].clone();
         Some(AreaInfo {
             start_x,
             start_y,
             end_x,
             end_y,
-            screen_info: info.get_screen_info(output),
+            screen_info: output.get_screen_info(),
         })
     }
 }
@@ -374,8 +385,8 @@ impl AreaInfo {
     }
 
     /// calculate the real start position
-    pub fn left_top_point(&self) -> Point {
-        Point {
+    pub fn left_top_point(&self) -> Position {
+        Position {
             x: self.start_x.min(self.end_x) as i32,
             y: (self.start_y.min(self.end_y)) as i32,
         }

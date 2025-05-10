@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{Point, SelectionType, Size, get_area};
+use libwaysip::{Position, SelectionType, Size, get_area};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -44,12 +44,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args {
         Cli::Point => {
             let info = get_info!(SelectionType::Point);
-            let Point { x, y } = info.left_top_point();
+            let Position { x, y } = info.left_top_point();
             println!("{x},{y} 1x1");
         }
         Cli::Dimensions => {
             let info = get_info!(SelectionType::Area);
-            let Point { x, y } = info.left_top_point();
+            let Position { x, y } = info.left_top_point();
             let width = info.width();
             let height = info.height();
             println!("{x},{y} {width}x{height}",);
@@ -63,11 +63,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } = screen_info.get_size();
             let name = screen_info.get_name();
             let description = screen_info.get_description();
-            let wlinfo = screen_info.get_outputinfo();
             let Size {
                 width: wl_w,
                 height: wl_h,
-            } = wlinfo.get_size();
+            } = screen_info.get_wloutput_size();
+
             println!("Screen : {name} {description}");
             println!("logic_width: {w}, logic_height: {h}");
             println!("width: {wl_w}, height: {wl_h}");
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Cli::Output => {
             let info = get_info!(SelectionType::Screen);
             let screen_info = info.selected_screen_info();
-            let Point { x, y } = screen_info.get_position();
+            let Position { x, y } = screen_info.get_position();
             let Size { width, height } = screen_info.get_size();
             println!("{x},{y} {width}x{height}",);
         }

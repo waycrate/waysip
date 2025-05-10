@@ -1,4 +1,7 @@
-use crate::state::{self, LayerSurfaceInfo, WaysipState};
+use crate::{
+    Position, Size,
+    state::{self, LayerSurfaceInfo, WaysipState},
+};
 use wayland_client::{
     Connection, Dispatch, Proxy, WEnum, delegate_noop,
     globals::GlobalListContents,
@@ -62,20 +65,19 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for WaysipState {
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
         let Some(info) = state
-            .zxdg_outputs
+            .wloutput_infos
             .iter_mut()
-            .find(|info| info.zxdg_output == *proxy)
+            .find(|info| info.zxdg_output() == proxy)
         else {
             return;
         };
+        let info = info.xdg_output_info_mut();
         match event {
             zxdg_output_v1::Event::LogicalSize { width, height } => {
-                info.height = height;
-                info.width = width;
+                info.size = Size { width, height }
             }
             zxdg_output_v1::Event::LogicalPosition { x, y } => {
-                info.start_x = x;
-                info.start_y = y;
+                info.start_position = Position { x, y }
             }
             zxdg_output_v1::Event::Name { name } => info.name = name,
             zxdg_output_v1::Event::Description { description } => info.description = description,
@@ -116,7 +118,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for state::WaysipState {
 
         if interface == wl_output::WlOutput::interface().name {
             let output = proxy.bind::<wl_output::WlOutput, _, _>(name, version, qh, ());
-            state.outputs.push(state::WlOutputInfo::new(output));
+            state.wloutput_infos.push(state::WlOutputInfo::new(output));
         }
     }
 }
@@ -131,7 +133,7 @@ impl Dispatch<wl_output::WlOutput, ()> for state::WaysipState {
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
         let output = state
-            .outputs
+            .wloutput_infos
             .iter_mut()
             .find(|x| x.get_output() == wl_output)
             .unwrap();
@@ -144,7 +146,7 @@ impl Dispatch<wl_output::WlOutput, ()> for state::WaysipState {
                 output.description = description;
             }
             wl_output::Event::Mode { width, height, .. } => {
-                output.size = (width, height);
+                output.size = Size { width, height };
             }
 
             _ => (),
@@ -258,10 +260,14 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     .position(|info| info.wl_surface == surface)
                     .unwrap();
                 dispatch_state.current_screen = current_screen;
-                let start_x = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_x;
-                let start_y = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_y;
-                dispatch_state.current_pos =
-                    (surface_x + start_x as f64, surface_y + start_y as f64);
+                let info =
+                    dispatch_state.wloutput_infos[dispatch_state.current_screen].xdg_output_info();
+                let start_x = info.start_position.x;
+                let start_y = info.start_position.y;
+                dispatch_state.current_pos = Position {
+                    x: surface_x + start_x as f64,
+                    y: surface_y + start_y as f64,
+                };
 
                 if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
                     let device = cursor_manager.get_pointer(pointer, qh, ());
@@ -287,10 +293,14 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 surface_y,
                 ..
             } => {
-                let start_x = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_x;
-                let start_y = dispatch_state.zxdg_outputs[dispatch_state.current_screen].start_y;
-                dispatch_state.current_pos =
-                    (surface_x + start_x as f64, surface_y + start_y as f64);
+                let info =
+                    dispatch_state.wloutput_infos[dispatch_state.current_screen].xdg_output_info();
+                let start_x = info.start_position.x;
+                let start_y = info.start_position.y;
+                dispatch_state.current_pos = Position {
+                    x: surface_x + start_x as f64,
+                    y: surface_y + start_y as f64,
+                };
                 if dispatch_state.is_area() {
                     dispatch_state.commit();
                 }

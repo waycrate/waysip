@@ -110,11 +110,12 @@ fn get_area_inner(
         .bind::<ZxdgOutputManagerV1, _, _>(&qh, 1..=3, ())
         .map_err(WaySipError::NotSupportedProtocol)?;
 
-    for wloutput in state.outputs.iter() {
+    for wloutput in state.wloutput_infos.iter_mut() {
         let zwloutput = xdg_output_manager.get_xdg_output(wloutput.get_output(), &qh, ());
-        state
-            .zxdg_outputs
-            .push(state::ZXdgOutputInfo::new(zwloutput));
+        wloutput
+            .xdg_output_info
+            .set(state::ZXdgOutputInfo::new(zwloutput))
+            .expect("should be set only once");
     }
 
     event_queue
@@ -132,15 +133,14 @@ fn get_area_inner(
     // or layer_shell or session-shell, then get `surface` from the wl_surface you get before, and
     // set it
     // finally thing to remember is to commit the surface, make the shell to init.
-    for (index, (wloutput, zwlinfo)) in state
-        .outputs
-        .iter()
-        .zip(state.zxdg_outputs.iter())
-        .enumerate()
-    {
+    for (index, wloutput) in state.wloutput_infos.iter().enumerate() {
         let wl_surface = wmcompositer.create_surface(&qh, ()); // and create a surface. if two or more,
         // we need to create more
-        let (init_w, init_h) = (zwlinfo.width, zwlinfo.height);
+        let zwlinfo = wloutput.xdg_output_info();
+        let Size {
+            width: init_w,
+            height: init_h,
+        } = zwlinfo.size;
         // this example is ok for both xdg_surface and layer_shell
 
         let layer = layer_shell.get_layer_surface(
@@ -151,7 +151,7 @@ fn get_area_inner(
             &qh,
             (),
         );
-        layer.set_anchor(Anchor::Top | Anchor::Left | Anchor::Right | Anchor::Bottom);
+        layer.set_anchor(Anchor::all());
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
         layer.set_size(init_w as u32, init_h as u32);

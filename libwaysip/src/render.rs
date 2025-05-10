@@ -1,8 +1,8 @@
+use super::state::LayerSurfaceInfo;
+use crate::{Size, utils::Position};
 use cairo::{Context, Format};
 use memmap2::MmapMut;
 use std::fs::File;
-
-use super::state::LayerSurfaceInfo;
 
 const FONT_FAMILY: &str = "Sans";
 const FONT_SIZE: i32 = 20;
@@ -16,8 +16,11 @@ impl LayerSurfaceInfo {
     pub fn redraw_select_screen(
         &self,
         is_selected: bool,
-        (width, height): (i32, i32),
-        (start_x, start_y): (i32, i32),
+        Size { width, height }: Size,
+        Position {
+            x: start_x,
+            y: start_y,
+        }: Position,
         name: &str,
         description: &str,
     ) {
@@ -59,10 +62,19 @@ impl LayerSurfaceInfo {
     }
     pub fn redraw(
         &self,
-        (start_pos_x, start_pos_y): (f64, f64),
-        (endpos_x, endpos_y): (f64, f64),
-        (start_x, start_y): (i32, i32),
-        (width, height): (i32, i32),
+        Position {
+            x: start_pos_x,
+            y: start_pos_y,
+        }: Position<f64>,
+        Position {
+            x: endpos_x,
+            y: endpos_y,
+        }: Position<f64>,
+        Position {
+            x: start_x,
+            y: start_y,
+        }: Position,
+        Size { width, height }: Size,
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);

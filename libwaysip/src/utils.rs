@@ -1,6 +1,6 @@
 /// Describe the point
 #[derive(Debug, Copy, Clone)]
-pub struct Point<T = i32> {
+pub struct Position<T = i32> {
     pub x: T,
     pub y: T,
 }
