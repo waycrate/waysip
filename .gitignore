@@ -1,2 +1,5 @@
 /target
 /.direnv
+/result
+flamegraph*
+perf.data*
