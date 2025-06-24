@@ -11,22 +11,22 @@ readme.workspace = true
 
 [dependencies]
 tempfile = "3.20.0"
-wayland-client = "0.31.5"
-wayland-cursor = "0.31.5"
+wayland-client = "0.31.10"
+wayland-cursor = "0.31.10"
 
-wayland-protocols = { version = "0.32.3", default-features = false, features = [
+wayland-protocols = { version = "0.32.8", default-features = false, features = [
 	"unstable",
 	"staging",
 	"client",
 ] }
 
-wayland-protocols-wlr = { version = "0.3.3", default-features = false, features = [
+wayland-protocols-wlr = { version = "0.3.8", default-features = false, features = [
 	"client",
 ] }
 
-cairo-rs = "0.20.0"
-pango = "0.20.0"
-pangocairo = "0.20.0"
+cairo-rs = "0.20.12"
+pango = "0.20.12"
+pangocairo = "0.20.10"
 
-memmap2 = "0.9.4"
-thiserror = "2.0.3"
+memmap2 = "0.9.5"
+thiserror = "2.0.12"

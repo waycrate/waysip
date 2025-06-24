@@ -200,6 +200,5 @@ fn get_area_inner(
         surface.buffer.destroy();
     }
     state.wl_surfaces.clear();
-    let _ = event_queue.roundtrip(&mut state);
     Ok(state.area_info())
 }
