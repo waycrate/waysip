@@ -175,6 +175,7 @@ pub struct WaysipState {
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
     pub shm: Option<WlShm>,
     pub qh: Option<QueueHandle<Self>>,
+    pub last_redraw: std::time::Instant,
 }
 
 impl WaysipState {
@@ -191,6 +192,7 @@ impl WaysipState {
             cursor_manager: None,
             qh: None,
             shm: None,
+            last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
         }
     }
 

@@ -302,7 +302,13 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     y: surface_y + start_y as f64,
                 };
                 if dispatch_state.is_area() {
-                    dispatch_state.commit();
+                    let now = std::time::Instant::now();
+                    if now.duration_since(dispatch_state.last_redraw)
+                        >= std::time::Duration::from_millis(10)
+                    {
+                        dispatch_state.commit();
+                        dispatch_state.last_redraw = now;
+                    }
                 }
             }
             _ => {}
