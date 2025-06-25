@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{Position, SelectionType, Size, get_area};
+use libwaysip::{Position, SelectionType, Size, WaySip};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     macro_rules! get_info {
         ($x: expr) => {
-            match get_area(None, $x) {
+            match WaySip::new().with_selection_type($x).get() {
                 Ok(Some(info)) => info,
                 Ok(None) => {
                     eprintln!("Get None, you cancel it");

@@ -1,4 +1,4 @@
-use libwaysip::{SelectionType, get_area};
+use libwaysip::{SelectionType, WaySip};
 use wayland_client::{
     Connection, Dispatch, QueueHandle, globals::GlobalListContents, protocol::wl_registry,
 };
@@ -20,5 +20,11 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
 fn main() {
     let connection = Connection::connect_to_env().unwrap();
 
-    println!("{:?}", get_area(Some(connection), SelectionType::Area));
+    println!(
+        "{:?}",
+        WaySip::new()
+            .with_connection(connection)
+            .with_selection_type(SelectionType::Area)
+            .get()
+    );
 }

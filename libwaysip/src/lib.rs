@@ -38,18 +38,37 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
     Some(cursor?[0].clone())
 }
 
-/// get the selected area
-pub fn get_area(
-    waysip_connection: Option<Connection>,
+#[derive(Debug, Default)]
+pub struct WaySip {
+    conn: Option<Connection>,
     selection_type: SelectionType,
-) -> Result<Option<state::AreaInfo>, WaySipError> {
-    match waysip_connection {
-        Some(connection) => get_area_inner(&connection, selection_type),
-        None => {
-            let connection =
-                Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
+}
 
-            get_area_inner(&connection, selection_type)
+impl WaySip {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_connection(mut self, conn: Connection) -> Self {
+        self.conn = Some(conn);
+        self
+    }
+
+    pub fn with_selection_type(mut self, selection_type: SelectionType) -> Self {
+        self.selection_type = selection_type;
+        self
+    }
+
+    /// get the selected area
+    pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
+        match self.conn {
+            Some(connection) => get_area_inner(&connection, self.selection_type),
+            None => {
+                let connection = Connection::connect_to_env()
+                    .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
+
+                get_area_inner(&connection, self.selection_type)
+            }
         }
     }
 }
