@@ -58,7 +58,7 @@ fn get_area_inner(
     connection: &Connection,
     selection_type: SelectionType,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
-    let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
+    let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
 
