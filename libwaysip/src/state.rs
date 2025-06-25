@@ -256,11 +256,11 @@ impl WaysipState {
     }
 
     pub fn commit(&self) {
-        let surface = &self.wl_surfaces[self.current_screen];
-        surface
-            .wl_surface
-            .frame(self.qh.as_ref().unwrap(), self.current_screen);
-        surface.wl_surface.commit();
+        let qh = self.qh.as_ref().unwrap();
+        for (idx, surface) in self.wl_surfaces.iter().enumerate() {
+            surface.wl_surface.frame(qh, idx);
+            surface.wl_surface.commit();
+        }
     }
 
     pub fn redraw_current_surface(&self) {
@@ -287,13 +287,25 @@ impl WaysipState {
         } = self.wloutput_infos[screen_index].xdg_output_info();
 
         if self.is_screen() {
-            info.redraw_select_screen(
-                self.current_screen == screen_index,
-                *size,
-                *start_position,
-                name,
-                description,
-            );
+            for (idx, info) in self
+                .wl_surfaces
+                .iter()
+                .enumerate()
+                .filter(|(_, i)| i.inited)
+            {
+                let ZXdgOutputInfo {
+                    size,
+                    start_position,
+                    ..
+                } = &self.wloutput_infos[idx].xdg_output_info();
+                info.redraw_select_screen(
+                    idx == self.current_screen,
+                    *size,
+                    *start_position,
+                    name,
+                    description,
+                );
+            }
         } else {
             if self.start_pos.is_none() {
                 return;

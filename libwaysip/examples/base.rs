@@ -20,11 +20,20 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
 fn main() {
     let connection = Connection::connect_to_env().unwrap();
 
+    let passing_data = libwaysip::state::PassingData {
+        background_color: [0.0, 0.0, 0.0, 1.0],
+        foreground_color: [1.0, 1.0, 1.0, 1.0],
+        border_text_color: [1.0, 1.0, 1.0, 1.0],
+        border_size: 2.0,
+        font_size: 12,
+        font_name: "sans-serif".to_string(),
+    };
+
     println!(
         "{:?}",
         WaySip::new()
             .with_connection(connection)
-            .with_selection_type(SelectionType::Area)
+            .with_selection_type(SelectionType::Area, passing_data)
             .get()
     );
 }

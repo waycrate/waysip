@@ -66,14 +66,14 @@ impl LayerSurfaceInfo {
         pangolayout.set_text(&name_txt);
         cairoinfo.save().unwrap();
         cairoinfo.move_to(10., 60.);
-        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, pangolayout);
         cairoinfo.restore().unwrap();
 
         let pos_txt = format!("pos: {start_x}, {start_y}");
         pangolayout.set_text(&pos_txt);
         cairoinfo.save().unwrap();
         cairoinfo.move_to(10., 90.);
-        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, pangolayout);
         cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
@@ -158,7 +158,7 @@ impl LayerSurfaceInfo {
         pangolayout.set_text(text.as_str());
         cairoinfo.save().unwrap();
         cairoinfo.move_to(relate_end_x + 10., relate_end_y + 10.);
-        pangocairo::functions::show_layout(cairoinfo, &pangolayout);
+        pangocairo::functions::show_layout(cairoinfo, pangolayout);
         cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
