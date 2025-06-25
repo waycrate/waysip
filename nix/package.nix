@@ -1,0 +1,36 @@
+{
+  fenix,
+  pkgs,
+  lib,
+  ...
+}: let
+  toolchain = fenix.packages.${pkgs.system}.latest.toolchain;
+  rustPlatformNightly = pkgs.makeRustPlatform {
+    cargo = toolchain;
+    rustc = toolchain;
+  };
+in
+  rustPlatformNightly.buildRustPackage rec {
+    pname = "waysip";
+    version = "0.4.0-git";
+
+    auditable = false;
+
+    src = lib.cleanSource ../.;
+
+    cargoLock.lockFile = "${src}/Cargo.lock";
+
+    nativeBuildInputs = with pkgs; [
+      pkg-config
+    ];
+
+    buildInputs = with pkgs; [
+      glib
+      pango
+      cairo
+    ];
+    postFixup = ''
+      patchelf $out/bin/waysip \
+        --add-rpath ${lib.makeLibraryPath buildInputs}
+    '';
+  }
