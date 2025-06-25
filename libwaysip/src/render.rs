@@ -1,11 +1,8 @@
 use super::state::LayerSurfaceInfo;
-use crate::{Size, utils::Position};
+use crate::{PASSINGDATA, Size, utils::Position};
 use cairo::{Context, Format};
 use memmap2::MmapMut;
 use std::fs::File;
-
-const FONT_FAMILY: &str = "Sans";
-const FONT_SIZE: i32 = 20;
 
 impl LayerSurfaceInfo {
     pub fn init_commit(&self) {
@@ -26,20 +23,39 @@ impl LayerSurfaceInfo {
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
-        let color = if is_selected { 0. } else { 0.4 };
-        let alpha = if is_selected { 0. } else { 0.5 };
-        cairoinfo.set_source_rgba(color, color, color, alpha);
+        let passing_data = PASSINGDATA.get().unwrap();
+        if is_selected {
+            cairoinfo.set_source_rgba(
+                passing_data.foreground_color[0],
+                passing_data.foreground_color[1],
+                passing_data.foreground_color[2],
+                passing_data.foreground_color[3],
+            );
+        } else {
+            cairoinfo.set_source_rgba(
+                passing_data.background_color[0],
+                passing_data.background_color[1],
+                passing_data.background_color[2],
+                passing_data.background_color[3],
+            );
+        }
         cairoinfo.paint().unwrap();
 
-        cairoinfo.set_source_rgb(0.3_f64, 0_f64, 0_f64);
+        //cairoinfo.set_source_rgb(0.3_f64, 0_f64, 0_f64);
+        cairoinfo.set_source_rgba(
+            passing_data.border_text_color[0],
+            passing_data.border_text_color[1],
+            passing_data.border_text_color[2],
+            passing_data.border_text_color[3],
+        );
 
-        let font_size = FONT_SIZE;
+        let font_size = passing_data.font_size;
         let pangolayout = self
             .pango_layout
             .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
         let desc = self.font_desc_normal.get_or_init(|| {
             let mut d = pango::FontDescription::new();
-            d.set_family(FONT_FAMILY);
+            d.set_family(passing_data.font_name.as_str());
             d.set_weight(pango::Weight::Normal);
             d.set_size(font_size * pango::SCALE);
             d
@@ -82,7 +98,13 @@ impl LayerSurfaceInfo {
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
-        cairoinfo.set_source_rgba(0.4_f64, 0.4_f64, 0.4_f64, 0.4);
+        let passing_data = PASSINGDATA.get().unwrap();
+        cairoinfo.set_source_rgba(
+            passing_data.background_color[0],
+            passing_data.background_color[1],
+            passing_data.background_color[2],
+            passing_data.background_color[3],
+        );
         cairoinfo.paint().unwrap();
 
         let relate_start_x = start_pos_x - start_x as f64;
@@ -96,18 +118,29 @@ impl LayerSurfaceInfo {
         let start_y = relate_start_y;
 
         cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
-        cairoinfo.set_source_rgba(0.1, 0.1, 0.1, 0.4);
-        cairoinfo.fill().unwrap();
+        cairoinfo.set_source_rgba(
+            passing_data.foreground_color[0],
+            passing_data.foreground_color[1],
+            passing_data.foreground_color[2],
+            passing_data.foreground_color[3],
+        );
+        cairoinfo.fill_preserve().unwrap();
+        cairoinfo.set_source_rgba(
+            passing_data.border_text_color[0],
+            passing_data.border_text_color[1],
+            passing_data.border_text_color[2],
+            passing_data.border_text_color[3],
+        );
+        cairoinfo.set_line_width(passing_data.border_size);
+        cairoinfo.stroke().unwrap();
 
-        cairoinfo.set_source_rgb(1_f64, 1_f64, 1_f64);
-
-        let font_size = FONT_SIZE;
+        let font_size = passing_data.font_size;
         let pangolayout = self
             .pango_layout
             .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
         let desc = self.font_desc_bold.get_or_init(|| {
             let mut d = pango::FontDescription::new();
-            d.set_family(FONT_FAMILY);
+            d.set_family(passing_data.font_name.as_str());
             d.set_weight(pango::Weight::Bold);
             d.set_size(font_size * pango::SCALE);
             d
@@ -149,7 +182,13 @@ pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> UiInit {
     let surface =
         cairo::ImageSurface::create_for_data(mmmap, cairo_fmt, width, height, stride).unwrap();
     let cairoinfo = cairo::Context::new(&surface).unwrap();
-    cairoinfo.set_source_rgba(0.4_f64, 0.4_f64, 0.4_f64, 0.4);
+    let passing_data = PASSINGDATA.get().unwrap();
+    cairoinfo.set_source_rgba(
+        passing_data.background_color[0],
+        passing_data.background_color[1],
+        passing_data.background_color[2],
+        passing_data.background_color[3],
+    );
     cairoinfo.paint().unwrap();
     UiInit {
         context: cairoinfo,

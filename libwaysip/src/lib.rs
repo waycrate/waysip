@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::SelectionType;
+pub use state::{PassingData, SelectionType};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
@@ -38,10 +38,13 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
     Some(cursor?[0].clone())
 }
 
+static PASSINGDATA: std::sync::OnceLock<PassingData> = std::sync::OnceLock::new();
+
 #[derive(Debug, Default)]
 pub struct WaySip {
     conn: Option<Connection>,
     selection_type: SelectionType,
+    passing_data: PassingData,
 }
 
 impl WaySip {
@@ -54,13 +57,19 @@ impl WaySip {
         self
     }
 
-    pub fn with_selection_type(mut self, selection_type: SelectionType) -> Self {
+    pub fn with_selection_type(
+        mut self,
+        selection_type: SelectionType,
+        passing_data: PassingData,
+    ) -> Self {
         self.selection_type = selection_type;
+        self.passing_data = passing_data;
         self
     }
 
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
+        PASSINGDATA.set(self.passing_data).unwrap();
         match self.conn {
             Some(connection) => get_area_inner(&connection, self.selection_type),
             None => {

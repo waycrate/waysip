@@ -354,6 +354,16 @@ pub struct AreaInfo {
     pub screen_info: ScreenInfo,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct PassingData {
+    pub background_color: [f64; 4],
+    pub foreground_color: [f64; 4],
+    pub border_text_color: [f64; 4],
+    pub border_size: f64,
+    pub font_size: i32,
+    pub font_name: String,
+}
+
 impl AreaInfo {
     /// provide the width of the area as f64
     pub fn width_f64(&self) -> f64 {
