@@ -8,7 +8,7 @@ authors = [
 	"Aakash Sen Sharma <aakashsensharma@gmail.com>",
 ]
 edition = "2024"
-version = "0.4.0"
+version = "0.5.0-dev"
 license = "MIT"
 description = "Wayland native (zwlr_layer_shell) area selection client"
 repository = "https://github.com/waycrate/waysip"
@@ -16,5 +16,5 @@ keywords = ["wayland", "wlroots", "slurp"]
 readme = "README.md"
 
 [workspace.dependencies]
-libwaysip = { version = "0.4.0-rc1", path = "./libwaysip" }
+libwaysip = { version = "0.5.0-dev", path = "./libwaysip" }
 tracing = "0.1"
