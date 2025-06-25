@@ -338,6 +338,9 @@ pub struct LayerSurfaceInfo {
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,
+    pub pango_layout: std::cell::OnceCell<pango::Layout>,
+    pub font_desc_bold: std::cell::OnceCell<pango::FontDescription>,
+    pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
 }
 
 /// describe the information of the area
