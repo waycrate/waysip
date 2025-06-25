@@ -12,7 +12,7 @@
 in
   rustPlatformNightly.buildRustPackage rec {
     pname = "waysip";
-    version = "0.4.0-git";
+    version = "0.5.0-dev";
 
     auditable = false;
 
