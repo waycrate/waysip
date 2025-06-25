@@ -12,7 +12,7 @@ pub use state::SelectionType;
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
-    globals::{GlobalList, registry_queue_init},
+    globals::registry_queue_init,
     protocol::{
         wl_compositor::WlCompositor,
         wl_seat::WlSeat,
@@ -38,36 +38,28 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
     Some(cursor?[0].clone())
 }
 
-pub struct WaysipConnection<'a> {
-    pub connection: &'a Connection,
-    pub globals: &'a GlobalList,
-}
-
 /// get the selected area
 pub fn get_area(
-    waysip_connection: Option<WaysipConnection>,
+    waysip_connection: Option<Connection>,
     selection_type: SelectionType,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     match waysip_connection {
-        Some(WaysipConnection {
-            connection,
-            globals,
-        }) => get_area_inner(connection, globals, selection_type),
+        Some(connection) => get_area_inner(&connection, selection_type),
         None => {
             let connection =
                 Connection::connect_to_env().map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-            let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
-                .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
-            get_area_inner(&connection, &globals, selection_type)
+
+            get_area_inner(&connection, selection_type)
         }
     }
 }
 
 fn get_area_inner(
     connection: &Connection,
-    globals: &GlobalList,
     selection_type: SelectionType,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
+    let (globals, _) = registry_queue_init::<state::WaysipState>(&connection)
+        .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
 
     let mut event_queue = connection.new_event_queue::<state::WaysipState>();
