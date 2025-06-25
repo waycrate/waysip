@@ -57,12 +57,12 @@ impl WaySip {
         self
     }
 
-    pub fn with_selection_type(
-        mut self,
-        selection_type: SelectionType,
-        passing_data: PassingData,
-    ) -> Self {
+    pub fn with_selection_type(mut self, selection_type: SelectionType) -> Self {
         self.selection_type = selection_type;
+        self
+    }
+
+    pub fn with_parsing_data(mut self, passing_data: PassingData) -> Self {
         self.passing_data = passing_data;
         self
     }

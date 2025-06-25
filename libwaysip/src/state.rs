@@ -367,10 +367,18 @@ pub struct AreaInfo {
 }
 
 #[derive(Default, Debug, Clone)]
+pub struct Color {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+    pub a: f64,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct PassingData {
-    pub background_color: [f64; 4],
-    pub foreground_color: [f64; 4],
-    pub border_text_color: [f64; 4],
+    pub background_color: Color,
+    pub foreground_color: Color,
+    pub border_text_color: Color,
     pub border_size: f64,
     pub font_size: i32,
     pub font_name: String,

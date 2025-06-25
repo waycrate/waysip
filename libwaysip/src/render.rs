@@ -26,27 +26,26 @@ impl LayerSurfaceInfo {
         let passing_data = PASSINGDATA.get().unwrap();
         if is_selected {
             cairoinfo.set_source_rgba(
-                passing_data.foreground_color[0],
-                passing_data.foreground_color[1],
-                passing_data.foreground_color[2],
-                passing_data.foreground_color[3],
+                passing_data.foreground_color.r,
+                passing_data.foreground_color.g,
+                passing_data.foreground_color.b,
+                passing_data.foreground_color.a,
             );
         } else {
             cairoinfo.set_source_rgba(
-                passing_data.background_color[0],
-                passing_data.background_color[1],
-                passing_data.background_color[2],
-                passing_data.background_color[3],
+                passing_data.background_color.r,
+                passing_data.background_color.g,
+                passing_data.background_color.b,
+                passing_data.background_color.a,
             );
         }
         cairoinfo.paint().unwrap();
 
-        //cairoinfo.set_source_rgb(0.3_f64, 0_f64, 0_f64);
         cairoinfo.set_source_rgba(
-            passing_data.border_text_color[0],
-            passing_data.border_text_color[1],
-            passing_data.border_text_color[2],
-            passing_data.border_text_color[3],
+            passing_data.border_text_color.r,
+            passing_data.border_text_color.g,
+            passing_data.border_text_color.b,
+            passing_data.border_text_color.a,
         );
 
         let font_size = passing_data.font_size;
@@ -100,10 +99,10 @@ impl LayerSurfaceInfo {
         cairoinfo.set_operator(cairo::Operator::Source);
         let passing_data = PASSINGDATA.get().unwrap();
         cairoinfo.set_source_rgba(
-            passing_data.background_color[0],
-            passing_data.background_color[1],
-            passing_data.background_color[2],
-            passing_data.background_color[3],
+            passing_data.background_color.r,
+            passing_data.background_color.g,
+            passing_data.background_color.b,
+            passing_data.background_color.a,
         );
         cairoinfo.paint().unwrap();
 
@@ -119,17 +118,17 @@ impl LayerSurfaceInfo {
 
         cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
         cairoinfo.set_source_rgba(
-            passing_data.foreground_color[0],
-            passing_data.foreground_color[1],
-            passing_data.foreground_color[2],
-            passing_data.foreground_color[3],
+            passing_data.foreground_color.r,
+            passing_data.foreground_color.g,
+            passing_data.foreground_color.b,
+            passing_data.foreground_color.a,
         );
         cairoinfo.fill_preserve().unwrap();
         cairoinfo.set_source_rgba(
-            passing_data.border_text_color[0],
-            passing_data.border_text_color[1],
-            passing_data.border_text_color[2],
-            passing_data.border_text_color[3],
+            passing_data.border_text_color.r,
+            passing_data.border_text_color.g,
+            passing_data.border_text_color.b,
+            passing_data.border_text_color.a,
         );
         cairoinfo.set_line_width(passing_data.border_size);
         cairoinfo.stroke().unwrap();
@@ -184,10 +183,10 @@ pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> UiInit {
     let cairoinfo = cairo::Context::new(&surface).unwrap();
     let passing_data = PASSINGDATA.get().unwrap();
     cairoinfo.set_source_rgba(
-        passing_data.background_color[0],
-        passing_data.background_color[1],
-        passing_data.background_color[2],
-        passing_data.background_color[3],
+        passing_data.background_color.r,
+        passing_data.background_color.g,
+        passing_data.background_color.b,
+        passing_data.background_color.a,
     );
     cairoinfo.paint().unwrap();
     UiInit {

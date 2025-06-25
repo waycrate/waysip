@@ -68,9 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let passing_data: libwaysip::state::PassingData = libwaysip::state::PassingData {
-        background_color: hex_to_vec(args.background.unwrap())?,
-        foreground_color: hex_to_vec(args.border_color.unwrap())?,
-        border_text_color: hex_to_vec(args.selection_color.unwrap())?,
+        background_color: hex_to_color(args.background.unwrap())?,
+        foreground_color: hex_to_color(args.border_color.unwrap())?,
+        border_text_color: hex_to_color(args.selection_color.unwrap())?,
         border_size: match args
             .border_weight
             .as_ref()
@@ -89,7 +89,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     macro_rules! get_info {
         ($x: expr) => {
             match WaySip::new()
-                .with_selection_type($x, passing_data.clone())
+                .with_selection_type($x)
+                .with_parsing_data(passing_data.clone())
                 .get()
             {
                 Ok(Some(info)) => info,
@@ -147,17 +148,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn hex_to_vec(colors: String) -> Result<[f64; 4], Box<dyn std::error::Error>> {
+fn hex_to_color(colors: String) -> Result<libwaysip::state::Color, Box<dyn std::error::Error>> {
     let bg_color = colors.trim_start_matches('#');
 
     if bg_color.len() != 8 || !bg_color.chars().all(|c| c.is_ascii_hexdigit()) {
         eprintln!("Invalid background color format, expected #rrggbbaa");
         std::process::exit(1);
     }
-    let mut rgba = [0.0f64; 4];
-    for i in 0..4 {
-        let byte = u8::from_str_radix(&bg_color[i * 2..i * 2 + 2], 16)?;
-        rgba[i] = byte as f64 / 255.0;
-    }
-    Ok(rgba)
+    let color = libwaysip::state::Color {
+        r: u8::from_str_radix(&bg_color[0..2], 16)? as f64 / 255.0,
+        g: u8::from_str_radix(&bg_color[2..4], 16)? as f64 / 255.0,
+        b: u8::from_str_radix(&bg_color[4..6], 16)? as f64 / 255.0,
+        a: u8::from_str_radix(&bg_color[6..8], 16)? as f64 / 255.0,
+    };
+    Ok(color)
 }
