@@ -366,7 +366,7 @@ pub struct AreaInfo {
     pub screen_info: ScreenInfo,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Color {
     pub r: f64,
     pub g: f64,

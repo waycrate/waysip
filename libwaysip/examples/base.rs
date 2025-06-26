@@ -28,9 +28,9 @@ fn main() {
     };
 
     let passing_data = libwaysip::state::PassingData {
-        background_color: color.clone(),
-        foreground_color: color.clone(),
-        border_text_color: color.clone(),
+        background_color: color,
+        foreground_color: color,
+        border_text_color: color,
         border_size: 2.0,
         font_size: 12,
         font_name: "sans-serif".to_string(),
