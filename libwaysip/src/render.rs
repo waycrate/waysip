@@ -174,7 +174,7 @@ pub struct UiInit {
 pub fn draw_ui(
     tmp: &mut File,
     (width, height): (i32, i32),
-    background_color: crate::state::Color,
+    background_color: crate::Color,
 ) -> UiInit {
     let cairo_fmt = Format::ARgb32;
     let stride = cairo_fmt.stride_for_width(width as u32).unwrap();
