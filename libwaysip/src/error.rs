@@ -17,3 +17,11 @@ pub enum WaySipError {
     #[error("Cannot get cursor")]
     CursorThemeFetchFailed,
 }
+
+#[derive(Debug, Error)]
+pub enum ColorError {
+    #[error("Invalid color format `{0}`, expected `#rrggbbaa/rrggbbaa`")]
+    InvalidColorFormat(String),
+    #[error("Invalid color value: {0}")]
+    ParseIntError(#[from] std::num::ParseIntError),
+}

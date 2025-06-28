@@ -59,13 +59,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut builder = WaySip::new().with_selection_type(sel);
 
         if let Some(color) = args.background.take() {
-            builder = builder.with_background_color(Color::hex_to_color(color).unwrap());
+            builder =
+                builder.with_background_color(Color::hex_to_color(color).unwrap_or_else(|e| {
+                    eprintln!("Err: {e}");
+                    std::process::exit(1);
+                }));
         }
         if let Some(color) = args.border_color.take() {
-            builder = builder.with_foreground_color(Color::hex_to_color(color).unwrap());
+            builder =
+                builder.with_foreground_color(Color::hex_to_color(color).unwrap_or_else(|e| {
+                    eprintln!("Err: {e}");
+                    std::process::exit(1);
+                }));
         }
         if let Some(color) = args.selection_color.take() {
-            builder = builder.with_border_text_color(Color::hex_to_color(color).unwrap());
+            builder =
+                builder.with_border_text_color(Color::hex_to_color(color).unwrap_or_else(|e| {
+                    eprintln!("Err: {e}");
+                    std::process::exit(1);
+                }));
         }
         if let Some(border_weight) = args.border_weight.take() {
             let bw = border_weight.parse::<f64>().unwrap_or_else(|_| {

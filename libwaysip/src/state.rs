@@ -18,6 +18,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrL
 
 use crate::{
     Position, Size,
+    error::ColorError,
     render::{self, UiInit},
 };
 
@@ -440,12 +441,11 @@ impl Default for Color {
 }
 
 impl Color {
-    pub fn hex_to_color(colorhex: String) -> Result<Color, Box<dyn std::error::Error>> {
+    pub fn hex_to_color(colorhex: String) -> Result<Color, ColorError> {
         let stripped_color = colorhex.trim_start_matches('#');
 
         if stripped_color.len() != 8 || !stripped_color.chars().all(|c| c.is_ascii_hexdigit()) {
-            eprintln!("Invalid background color format, expected #rrggbbaa/rrggbbaa");
-            std::process::exit(1);
+            return Err(ColorError::InvalidColorFormat(colorhex.to_string()));
         }
         let color = Color {
             r: u8::from_str_radix(&stripped_color[0..2], 16)? as f64 / 255.0,
@@ -470,9 +470,24 @@ pub struct Style {
 impl Default for Style {
     fn default() -> Self {
         Style {
-            background_color: Color::hex_to_color("#66666680".to_string()).unwrap(),
-            foreground_color: Color::hex_to_color("#00000000".to_string()).unwrap(),
-            border_text_color: Color::hex_to_color("#000000ff".to_string()).unwrap(),
+            background_color: Color {
+                r: 0.4,
+                g: 0.4,
+                b: 0.4,
+                a: 0.5,
+            }, // #66666680
+            foreground_color: Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            }, // #00000000
+            border_text_color: Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 1.0,
+            }, // #000000ff
             border_weight: 1.0,
             font_size: 12,
             font_name: "Sans".to_string(),
