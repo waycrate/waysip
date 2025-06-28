@@ -1,5 +1,5 @@
 use super::state::LayerSurfaceInfo;
-use crate::{PASSINGDATA, Size, utils::Position};
+use crate::{Size, utils::Position};
 use cairo::{Context, Format};
 use memmap2::MmapMut;
 use std::fs::File;
@@ -23,38 +23,37 @@ impl LayerSurfaceInfo {
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
-        let passing_data = PASSINGDATA.get().unwrap();
         if is_selected {
             cairoinfo.set_source_rgba(
-                passing_data.foreground_color.r,
-                passing_data.foreground_color.g,
-                passing_data.foreground_color.b,
-                passing_data.foreground_color.a,
+                self.style.foreground_color.r,
+                self.style.foreground_color.g,
+                self.style.foreground_color.b,
+                self.style.foreground_color.a,
             );
         } else {
             cairoinfo.set_source_rgba(
-                passing_data.background_color.r,
-                passing_data.background_color.g,
-                passing_data.background_color.b,
-                passing_data.background_color.a,
+                self.style.background_color.r,
+                self.style.background_color.g,
+                self.style.background_color.b,
+                self.style.background_color.a,
             );
         }
         cairoinfo.paint().unwrap();
 
         cairoinfo.set_source_rgba(
-            passing_data.border_text_color.r,
-            passing_data.border_text_color.g,
-            passing_data.border_text_color.b,
-            passing_data.border_text_color.a,
+            self.style.border_text_color.r,
+            self.style.border_text_color.g,
+            self.style.border_text_color.b,
+            self.style.border_text_color.a,
         );
 
-        let font_size = passing_data.font_size;
+        let font_size = self.style.font_size;
         let pangolayout = self
             .pango_layout
             .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
         let desc = self.font_desc_normal.get_or_init(|| {
             let mut d = pango::FontDescription::new();
-            d.set_family(passing_data.font_name.as_str());
+            d.set_family(self.style.font_name.as_str());
             d.set_weight(pango::Weight::Normal);
             d.set_size(font_size * pango::SCALE);
             d
@@ -97,12 +96,11 @@ impl LayerSurfaceInfo {
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
-        let passing_data = PASSINGDATA.get().unwrap();
         cairoinfo.set_source_rgba(
-            passing_data.background_color.r,
-            passing_data.background_color.g,
-            passing_data.background_color.b,
-            passing_data.background_color.a,
+            self.style.background_color.r,
+            self.style.background_color.g,
+            self.style.background_color.b,
+            self.style.background_color.a,
         );
         cairoinfo.paint().unwrap();
 
@@ -118,28 +116,28 @@ impl LayerSurfaceInfo {
 
         cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
         cairoinfo.set_source_rgba(
-            passing_data.foreground_color.r,
-            passing_data.foreground_color.g,
-            passing_data.foreground_color.b,
-            passing_data.foreground_color.a,
+            self.style.foreground_color.r,
+            self.style.foreground_color.g,
+            self.style.foreground_color.b,
+            self.style.foreground_color.a,
         );
         cairoinfo.fill_preserve().unwrap();
         cairoinfo.set_source_rgba(
-            passing_data.border_text_color.r,
-            passing_data.border_text_color.g,
-            passing_data.border_text_color.b,
-            passing_data.border_text_color.a,
+            self.style.border_text_color.r,
+            self.style.border_text_color.g,
+            self.style.border_text_color.b,
+            self.style.border_text_color.a,
         );
-        cairoinfo.set_line_width(passing_data.border_size);
+        cairoinfo.set_line_width(self.style.border_weight);
         cairoinfo.stroke().unwrap();
 
-        let font_size = passing_data.font_size;
+        let font_size = self.style.font_size;
         let pangolayout = self
             .pango_layout
             .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
         let desc = self.font_desc_bold.get_or_init(|| {
             let mut d = pango::FontDescription::new();
-            d.set_family(passing_data.font_name.as_str());
+            d.set_family(self.style.font_name.as_str());
             d.set_weight(pango::Weight::Bold);
             d.set_size(font_size * pango::SCALE);
             d
@@ -172,7 +170,12 @@ pub struct UiInit {
     pub stride: i32,
 }
 
-pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> UiInit {
+// initial bg
+pub fn draw_ui(
+    tmp: &mut File,
+    (width, height): (i32, i32),
+    background_color: crate::state::Color,
+) -> UiInit {
     let cairo_fmt = Format::ARgb32;
     let stride = cairo_fmt.stride_for_width(width as u32).unwrap();
     tmp.set_len((stride * height) as u64).unwrap();
@@ -181,12 +184,11 @@ pub fn draw_ui(tmp: &mut File, (width, height): (i32, i32)) -> UiInit {
     let surface =
         cairo::ImageSurface::create_for_data(mmmap, cairo_fmt, width, height, stride).unwrap();
     let cairoinfo = cairo::Context::new(&surface).unwrap();
-    let passing_data = PASSINGDATA.get().unwrap();
     cairoinfo.set_source_rgba(
-        passing_data.background_color.r,
-        passing_data.background_color.g,
-        passing_data.background_color.b,
-        passing_data.background_color.a,
+        background_color.r,
+        background_color.g,
+        background_color.b,
+        background_color.a,
     );
     cairoinfo.paint().unwrap();
     UiInit {

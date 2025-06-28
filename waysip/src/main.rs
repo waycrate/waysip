@@ -7,39 +7,27 @@ use std::str::FromStr;
 #[command(about="Wayland native area picker", long_about = None)]
 struct Args {
     /// Set background color.
-    #[arg(
-        short = 'b',
-        default_value = "#66666680",
-        value_name = "#rrggbbaa/rrggbbaa"
-    )]
+    #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
     background: Option<String>,
 
     /// Set border and text color.
-    #[arg(
-        short = 'c',
-        default_value = "#ffffffff",
-        value_name = "#rrggbbaa/rrggbbaa"
-    )]
+    #[arg(short = 'c', value_name = "#rrggbbaa/rrggbbaa")]
     border_color: Option<String>,
 
     /// Set selection color.
-    #[arg(
-        short = 's',
-        default_value = "#00000000",
-        value_name = "#rrggbbaa/rrggbbaa"
-    )]
+    #[arg(short = 's', value_name = "#rrggbbaa/rrggbbaa")]
     selection_color: Option<String>,
 
     /// Set border weight.
-    #[arg(short = 'F', default_value = "Sans", value_name = "string")]
+    #[arg(short = 'F', value_name = "string")]
     font_name: Option<String>,
 
     /// Set fomt size.
-    #[arg(short = 'S', default_value = "12", value_name = "integer")]
+    #[arg(short = 'S', value_name = "integer")]
     font_size: Option<i32>,
 
     /// Set border weight.
-    #[arg(short = 'w', default_value = "1.0", value_name = "float")]
+    #[arg(short = 'w', value_name = "float")]
     border_weight: Option<String>,
 
     /// Select a single point.
@@ -67,60 +55,59 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let passing_data: libwaysip::state::PassingData = libwaysip::state::PassingData {
-        background_color: hex_to_color(args.background.unwrap())?,
-        foreground_color: hex_to_color(args.border_color.unwrap())?,
-        border_text_color: hex_to_color(args.selection_color.unwrap())?,
-        border_size: match args
-            .border_weight
-            .as_ref()
-            .and_then(|s| s.parse::<f64>().ok())
-        {
-            Some(weight) => weight,
-            None => {
+    let run_selection = |sel: SelectionType| {
+        let mut builder = WaySip::new().with_selection_type(sel);
+
+        if let Some(background) = args.background.clone() {
+            builder = builder.with_background_color(background);
+        }
+        if let Some(bodrder_text) = args.border_color.clone() {
+            builder = builder.with_foreground_color(bodrder_text);
+        }
+        if let Some(selection) = args.selection_color.clone() {
+            builder = builder.with_border_text_color(selection);
+        }
+        if let Some(border_weight) = args.border_weight.clone() {
+            let bw = border_weight.parse::<f64>().unwrap_or_else(|_| {
                 eprintln!("Invalid border weight, use -w <n> to set it");
                 std::process::exit(1);
+            });
+            builder = builder.with_border_weight(bw);
+        }
+        if let Some(font_size) = args.font_size {
+            builder = builder.with_font_size(font_size);
+        }
+        if let Some(font_name) = args.font_name.clone() {
+            builder = builder.with_font_name(font_name);
+        }
+
+        match builder.get() {
+            Ok(Some(info)) => info,
+            Ok(None) => {
+                eprintln!("Selection canceled");
+                std::process::exit(0);
             }
-        },
-        font_size: args.font_size.unwrap(),
-        font_name: args.font_name.unwrap(),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
+        }
     };
 
-    macro_rules! get_info {
-        ($x: expr) => {
-            match WaySip::new()
-                .with_selection_type($x)
-                .with_parsing_data(passing_data.clone())
-                .get()
-            {
-                Ok(Some(info)) => info,
-                Ok(None) => {
-                    eprintln!("Get None, you cancel it");
-                    // TODO: Have proper error types
-                    return Ok(());
-                }
-                Err(e) => {
-                    eprintln!("Error,{e}");
-                    return Ok(());
-                }
-            }
-        };
-    }
-
     if args.point {
-        let info = get_info!(SelectionType::Point);
+        let info = run_selection(SelectionType::Point);
         let Position { x, y } = info.left_top_point();
         println!("{x},{y} 1x1");
     }
     if args.dimensions {
-        let info = get_info!(SelectionType::Area);
+        let info = run_selection(SelectionType::Area);
         let Position { x, y } = info.left_top_point();
         let width = info.width();
         let height = info.height();
         println!("{x},{y} {width}x{height}",);
     }
     if args.screen {
-        let info = get_info!(SelectionType::Screen);
+        let info = run_selection(SelectionType::Screen);
         let screen_info = info.selected_screen_info();
         let Size {
             width: w,
@@ -138,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("width: {wl_w}, height: {wl_h}");
     }
     if args.output {
-        let info = get_info!(SelectionType::Screen);
+        let info = run_selection(SelectionType::Screen);
         let screen_info = info.selected_screen_info();
         let Position { x, y } = screen_info.get_position();
         let Size { width, height } = screen_info.get_size();
@@ -146,20 +133,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-fn hex_to_color(colors: String) -> Result<libwaysip::state::Color, Box<dyn std::error::Error>> {
-    let bg_color = colors.trim_start_matches('#');
-
-    if bg_color.len() != 8 || !bg_color.chars().all(|c| c.is_ascii_hexdigit()) {
-        eprintln!("Invalid background color format, expected #rrggbbaa");
-        std::process::exit(1);
-    }
-    let color = libwaysip::state::Color {
-        r: u8::from_str_radix(&bg_color[0..2], 16)? as f64 / 255.0,
-        g: u8::from_str_radix(&bg_color[2..4], 16)? as f64 / 255.0,
-        b: u8::from_str_radix(&bg_color[4..6], 16)? as f64 / 255.0,
-        a: u8::from_str_radix(&bg_color[6..8], 16)? as f64 / 255.0,
-    };
-    Ok(color)
 }

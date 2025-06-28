@@ -222,7 +222,11 @@ impl WaysipState {
         let UiInit {
             context: cairo_t,
             stride,
-        } = render::draw_ui(&mut file, (width, width));
+        } = render::draw_ui(
+            &mut file,
+            (width, width),
+            surface_info.style.background_color,
+        );
         let pool = self
             .shm
             .as_ref()
@@ -350,6 +354,7 @@ pub struct LayerSurfaceInfo {
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,
+    pub style: Style,
     pub pango_layout: std::cell::OnceCell<pango::Layout>,
     pub font_desc_bold: std::cell::OnceCell<pango::FontDescription>,
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
@@ -364,24 +369,6 @@ pub struct AreaInfo {
     pub end_y: f64,
 
     pub screen_info: ScreenInfo,
-}
-
-#[derive(Default, Debug, Clone, Copy)]
-pub struct Color {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-    pub a: f64,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct PassingData {
-    pub background_color: Color,
-    pub foreground_color: Color,
-    pub border_text_color: Color,
-    pub border_size: f64,
-    pub font_size: i32,
-    pub font_name: String,
 }
 
 impl AreaInfo {
@@ -430,5 +417,65 @@ impl AreaInfo {
     /// you can get the info of the chosen screen
     pub fn selected_screen_info(&self) -> &ScreenInfo {
         &self.screen_info
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Color {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+    pub a: f64,
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 0.5,
+        }
+    }
+}
+
+impl Color {
+    pub fn hex_to_color(colorhex: String) -> Result<Color, Box<dyn std::error::Error>> {
+        let stripped_color = colorhex.trim_start_matches('#');
+
+        if stripped_color.len() != 8 || !stripped_color.chars().all(|c| c.is_ascii_hexdigit()) {
+            eprintln!("Invalid background color format, expected #rrggbbaa/rrggbbaa");
+            std::process::exit(1);
+        }
+        let color = Color {
+            r: u8::from_str_radix(&stripped_color[0..2], 16)? as f64 / 255.0,
+            g: u8::from_str_radix(&stripped_color[2..4], 16)? as f64 / 255.0,
+            b: u8::from_str_radix(&stripped_color[4..6], 16)? as f64 / 255.0,
+            a: u8::from_str_radix(&stripped_color[6..8], 16)? as f64 / 255.0,
+        };
+        Ok(color)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Style {
+    pub background_color: Color,
+    pub foreground_color: Color,
+    pub border_text_color: Color,
+    pub border_weight: f64,
+    pub font_size: i32,
+    pub font_name: String,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Style {
+            background_color: Color::hex_to_color("#66666680".to_string()).unwrap(),
+            foreground_color: Color::hex_to_color("#00000000".to_string()).unwrap(),
+            border_text_color: Color::hex_to_color("#000000ff".to_string()).unwrap(),
+            border_weight: 1.0,
+            font_size: 12,
+            font_name: "Sans".to_string(),
+        }
     }
 }
