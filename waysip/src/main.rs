@@ -1,5 +1,5 @@
 use clap::Parser;
-use libwaysip::{Position, SelectionType, Size, WaySip};
+use libwaysip::{Color, Position, SelectionType, Size, WaySip};
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -53,21 +53,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_writer(std::io::stderr)
         .init();
 
-    let args = Args::parse();
+    let mut args = Args::parse();
 
-    let run_selection = |sel: SelectionType| {
+    let mut run_selection = |sel: SelectionType| {
         let mut builder = WaySip::new().with_selection_type(sel);
 
-        if let Some(background) = args.background.clone() {
-            builder = builder.with_background_color(background);
+        if let Some(color) = args.background.take() {
+            builder = builder.with_background_color(Color::hex_to_color(color).unwrap());
         }
-        if let Some(bodrder_text) = args.border_color.clone() {
-            builder = builder.with_foreground_color(bodrder_text);
+        if let Some(color) = args.border_color.take() {
+            builder = builder.with_foreground_color(Color::hex_to_color(color).unwrap());
         }
-        if let Some(selection) = args.selection_color.clone() {
-            builder = builder.with_border_text_color(selection);
+        if let Some(color) = args.selection_color.take() {
+            builder = builder.with_border_text_color(Color::hex_to_color(color).unwrap());
         }
-        if let Some(border_weight) = args.border_weight.clone() {
+        if let Some(border_weight) = args.border_weight.take() {
             let bw = border_weight.parse::<f64>().unwrap_or_else(|_| {
                 eprintln!("Invalid border weight, use -w <n> to set it");
                 std::process::exit(1);
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(font_size) = args.font_size {
             builder = builder.with_font_size(font_size);
         }
-        if let Some(font_name) = args.font_name.clone() {
+        if let Some(font_name) = args.font_name.take() {
             builder = builder.with_font_name(font_name);
         }
 

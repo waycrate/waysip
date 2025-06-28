@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::{SelectionType, Style};
+pub use state::{Color, SelectionType, Style};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
@@ -60,18 +60,18 @@ impl WaySip {
         self
     }
 
-    pub fn with_background_color(mut self, color: String) -> Self {
-        self.style.background_color = state::Color::hex_to_color(color).unwrap();
+    pub fn with_background_color(mut self, color: Color) -> Self {
+        self.style.background_color = color;
         self
     }
 
-    pub fn with_foreground_color(mut self, color: String) -> Self {
-        self.style.foreground_color = state::Color::hex_to_color(color).unwrap();
+    pub fn with_foreground_color(mut self, color: Color) -> Self {
+        self.style.foreground_color = color;
         self
     }
 
-    pub fn with_border_text_color(mut self, color: String) -> Self {
-        self.style.border_text_color = state::Color::hex_to_color(color).unwrap();
+    pub fn with_border_text_color(mut self, color: Color) -> Self {
+        self.style.border_text_color = color;
         self
     }
     pub fn with_border_weight(mut self, border_weight: f64) -> Self {
