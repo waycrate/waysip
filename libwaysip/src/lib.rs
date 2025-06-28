@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::SelectionType;
+pub use state::{Color, SelectionType, Style};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
@@ -42,6 +42,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
 pub struct WaySip {
     conn: Option<Connection>,
     selection_type: SelectionType,
+    style: Style,
 }
 
 impl WaySip {
@@ -59,15 +60,42 @@ impl WaySip {
         self
     }
 
+    pub fn with_background_color(mut self, color: Color) -> Self {
+        self.style.background_color = color;
+        self
+    }
+
+    pub fn with_foreground_color(mut self, color: Color) -> Self {
+        self.style.foreground_color = color;
+        self
+    }
+
+    pub fn with_border_text_color(mut self, color: Color) -> Self {
+        self.style.border_text_color = color;
+        self
+    }
+    pub fn with_border_weight(mut self, border_weight: f64) -> Self {
+        self.style.border_weight = border_weight;
+        self
+    }
+    pub fn with_font_size(mut self, font_size: i32) -> Self {
+        self.style.font_size = font_size;
+        self
+    }
+    pub fn with_font_name(mut self, font_name: String) -> Self {
+        self.style.font_name = font_name;
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         match self.conn {
-            Some(connection) => get_area_inner(&connection, self.selection_type),
+            Some(connection) => get_area_inner(&connection, self.selection_type, self.style),
             None => {
                 let connection = Connection::connect_to_env()
                     .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
 
-                get_area_inner(&connection, self.selection_type)
+                get_area_inner(&connection, self.selection_type, self.style)
             }
         }
     }
@@ -76,6 +104,7 @@ impl WaySip {
 fn get_area_inner(
     connection: &Connection,
     selection_type: SelectionType,
+    style: Style,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -175,7 +204,7 @@ fn get_area_inner(
         let UiInit {
             context: cairo_t,
             stride,
-        } = render::draw_ui(&mut file, (init_w, init_h));
+        } = render::draw_ui(&mut file, (init_w, init_h), style.background_color);
         let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());
 
         let buffer =
@@ -192,6 +221,10 @@ fn get_area_inner(
             inited: false,
             buffer_busy: true,
             stride,
+            style: style.clone(),
+            pango_layout: std::cell::OnceCell::new(),
+            font_desc_bold: std::cell::OnceCell::new(),
+            font_desc_normal: std::cell::OnceCell::new(),
         });
     }
     state.shm = Some(shm);

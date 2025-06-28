@@ -201,10 +201,8 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_keyboard::Event::Key { key, .. } = event {
-            if key == 1 {
-                state.running = false;
-            }
+        if let wl_keyboard::Event::Key { key: 1, .. } = event {
+            state.running = false;
         }
     }
 }

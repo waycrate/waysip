@@ -1,4 +1,4 @@
-use libwaysip::{SelectionType, WaySip};
+use libwaysip::{Color, SelectionType, WaySip};
 use wayland_client::{
     Connection, Dispatch, QueueHandle, globals::GlobalListContents, protocol::wl_registry,
 };
@@ -25,6 +25,12 @@ fn main() {
         WaySip::new()
             .with_connection(connection)
             .with_selection_type(SelectionType::Area)
+            .with_background_color(Color::default())
+            .with_foreground_color(Color::default())
+            .with_border_text_color(Color::default())
+            .with_border_weight(2.0)
+            .with_font_size(12)
+            .with_font_name("Sans".to_string())
             .get()
     );
 }

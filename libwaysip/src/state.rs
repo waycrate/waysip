@@ -18,6 +18,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrL
 
 use crate::{
     Position, Size,
+    error::ColorError,
     render::{self, UiInit},
 };
 
@@ -222,7 +223,11 @@ impl WaysipState {
         let UiInit {
             context: cairo_t,
             stride,
-        } = render::draw_ui(&mut file, (width, width));
+        } = render::draw_ui(
+            &mut file,
+            (width, width),
+            surface_info.style.background_color,
+        );
         let pool = self
             .shm
             .as_ref()
@@ -256,11 +261,11 @@ impl WaysipState {
     }
 
     pub fn commit(&self) {
-        let surface = &self.wl_surfaces[self.current_screen];
-        surface
-            .wl_surface
-            .frame(self.qh.as_ref().unwrap(), self.current_screen);
-        surface.wl_surface.commit();
+        let qh = self.qh.as_ref().unwrap();
+        for (idx, surface) in self.wl_surfaces.iter().enumerate() {
+            surface.wl_surface.frame(qh, idx);
+            surface.wl_surface.commit();
+        }
     }
 
     pub fn redraw_current_surface(&self) {
@@ -287,13 +292,25 @@ impl WaysipState {
         } = self.wloutput_infos[screen_index].xdg_output_info();
 
         if self.is_screen() {
-            info.redraw_select_screen(
-                self.current_screen == screen_index,
-                *size,
-                *start_position,
-                name,
-                description,
-            );
+            for (idx, info) in self
+                .wl_surfaces
+                .iter()
+                .enumerate()
+                .filter(|(_, i)| i.inited)
+            {
+                let ZXdgOutputInfo {
+                    size,
+                    start_position,
+                    ..
+                } = &self.wloutput_infos[idx].xdg_output_info();
+                info.redraw_select_screen(
+                    idx == self.current_screen,
+                    *size,
+                    *start_position,
+                    name,
+                    description,
+                );
+            }
         } else {
             if self.start_pos.is_none() {
                 return;
@@ -338,6 +355,10 @@ pub struct LayerSurfaceInfo {
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,
+    pub style: Style,
+    pub pango_layout: std::cell::OnceCell<pango::Layout>,
+    pub font_desc_bold: std::cell::OnceCell<pango::FontDescription>,
+    pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
 }
 
 /// describe the information of the area
@@ -397,5 +418,79 @@ impl AreaInfo {
     /// you can get the info of the chosen screen
     pub fn selected_screen_info(&self) -> &ScreenInfo {
         &self.screen_info
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Color {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+    pub a: f64,
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 0.5,
+        }
+    }
+}
+
+impl Color {
+    pub fn hex_to_color(colorhex: String) -> Result<Color, ColorError> {
+        let stripped_color = colorhex.trim_start_matches('#');
+
+        if stripped_color.len() != 8 || !stripped_color.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(ColorError::InvalidColorFormat(colorhex.to_string()));
+        }
+        let color = Color {
+            r: u8::from_str_radix(&stripped_color[0..2], 16)? as f64 / 255.0,
+            g: u8::from_str_radix(&stripped_color[2..4], 16)? as f64 / 255.0,
+            b: u8::from_str_radix(&stripped_color[4..6], 16)? as f64 / 255.0,
+            a: u8::from_str_radix(&stripped_color[6..8], 16)? as f64 / 255.0,
+        };
+        Ok(color)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Style {
+    pub background_color: Color,
+    pub foreground_color: Color,
+    pub border_text_color: Color,
+    pub border_weight: f64,
+    pub font_size: i32,
+    pub font_name: String,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Style {
+            background_color: Color {
+                r: 0.4,
+                g: 0.4,
+                b: 0.4,
+                a: 0.5,
+            }, // #66666680
+            foreground_color: Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            }, // #00000000
+            border_text_color: Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 1.0,
+            }, // #000000ff
+            border_weight: 1.0,
+            font_size: 12,
+            font_name: "Sans".to_string(),
+        }
     }
 }
