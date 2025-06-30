@@ -304,7 +304,29 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 };
                 dispatch_state.end_pos = None;
                 if dispatch_state.is_area() {
-                    dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                    if let Some(ratio) = dispatch_state.aspect_ratio {
+                        let width_rel = ratio.0;
+                        let height_rel = ratio.1;
+                        let start_pos = dispatch_state
+                            .start_pos
+                            .unwrap_or(dispatch_state.current_pos);
+                        let width = dispatch_state.current_pos.x - start_pos.x;
+                        let height = dispatch_state.current_pos.y - start_pos.y;
+                        if width_rel / height_rel > width / height {
+                            dispatch_state.end_pos = Some(Position {
+                                x: start_pos.x + height * width_rel / height_rel,
+                                y: start_pos.y + height,
+                            });
+                        } else {
+                            dispatch_state.end_pos = Some(Position {
+                                x: start_pos.x + width,
+                                y: start_pos.y + width * height_rel / width_rel,
+                            });
+                        }
+                    } else {
+                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                    }
+
                     let now = std::time::Instant::now();
                     if now.duration_since(dispatch_state.last_redraw)
                         >= std::time::Duration::from_millis(8)

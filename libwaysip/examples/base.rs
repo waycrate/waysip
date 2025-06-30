@@ -31,6 +31,8 @@ fn main() {
             .with_border_weight(2.0)
             .with_font_size(12)
             .with_font_name("Sans".to_string())
+            .with_predefined_boxes(Vec::new())
+            .with_aspect_ratio(16.0, 9.0)
             .get()
     );
 }

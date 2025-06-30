@@ -51,6 +51,10 @@ struct Args {
     /// Restrict selection to predefined boxes.
     #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
     boxes: bool,
+
+    /// Force aspect ratio.
+    #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
+    aspect_ratio: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -100,6 +104,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if let Some(boxes) = boxes {
             builder = builder.with_predefined_boxes(boxes);
+        }
+        if let Some(aspect_ratio) = args.aspect_ratio.take() {
+            let parts: Vec<&str> = aspect_ratio.split(':').collect();
+            if parts.len() != 2 {
+                eprintln!("Invalid aspect ratio format, use -a <width:height>");
+                std::process::exit(1);
+            }
+            let width = parts[0].parse::<f64>().unwrap_or_else(|_| {
+                eprintln!("Invalid width in aspect ratio");
+                std::process::exit(1);
+            });
+            let height = parts[1].parse::<f64>().unwrap_or_else(|_| {
+                eprintln!("Invalid height in aspect ratio");
+                std::process::exit(1);
+            });
+            builder = builder.with_aspect_ratio(width, height);
         }
 
         match builder.get() {

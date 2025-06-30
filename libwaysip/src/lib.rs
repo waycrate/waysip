@@ -44,6 +44,7 @@ pub struct WaySip {
     selection_type: SelectionType,
     style: Style,
     predefined_boxes: Option<Vec<state::BoxInfo>>,
+    aspect_ratio: Option<(f64, f64)>,
 }
 
 impl WaySip {
@@ -93,6 +94,11 @@ impl WaySip {
         self
     }
 
+    pub fn with_aspect_ratio(mut self, width: f64, height: f64) -> Self {
+        self.aspect_ratio = Some((width, height));
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         match self.conn {
@@ -101,6 +107,7 @@ impl WaySip {
                 self.selection_type,
                 self.style,
                 self.predefined_boxes,
+                self.aspect_ratio,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -111,6 +118,7 @@ impl WaySip {
                     self.selection_type,
                     self.style,
                     self.predefined_boxes,
+                    self.aspect_ratio,
                 )
             }
         }
@@ -122,12 +130,14 @@ fn get_area_inner(
     selection_type: SelectionType,
     style: Style,
     boxes: Option<Vec<state::BoxInfo>>,
+    aspect_ratio: Option<(f64, f64)>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
 
     state.predefined_boxes = boxes;
+    state.aspect_ratio = aspect_ratio;
 
     let mut event_queue = connection.new_event_queue::<state::WaysipState>();
     let qh = event_queue.handle();

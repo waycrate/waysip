@@ -178,6 +178,7 @@ pub struct WaysipState {
     pub shm: Option<WlShm>,
     pub qh: Option<QueueHandle<Self>>,
     pub predefined_boxes: Option<Vec<BoxInfo>>,
+    pub aspect_ratio: Option<(f64, f64)>,
     pub last_redraw: std::time::Instant,
 }
 
@@ -196,6 +197,7 @@ impl WaysipState {
             qh: None,
             shm: None,
             predefined_boxes: None,
+            aspect_ratio: None,
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
         }
     }
