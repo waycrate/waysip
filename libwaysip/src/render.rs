@@ -1,5 +1,5 @@
 use super::state::LayerSurfaceInfo;
-use crate::{Size, utils::Position};
+use crate::{BoxInfo, Size, utils::Position};
 use cairo::{Context, Format};
 use memmap2::MmapMut;
 use std::fs::File;
@@ -113,6 +113,7 @@ impl LayerSurfaceInfo {
         }: Position,
         Size { width, height }: Size,
         draw_text: bool,
+        opt_boxes: Option<&Vec<BoxInfo>>,
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
@@ -123,6 +124,26 @@ impl LayerSurfaceInfo {
             self.style.background_color.a,
         );
         cairoinfo.paint().unwrap();
+
+        if let Some(boxes) = opt_boxes {
+            for box_info in boxes {
+                let bstart_x = box_info.start_x - start_x as f64;
+                let bstart_y = box_info.start_x - start_y as f64;
+                let bend_x = box_info.end_x - start_x as f64;
+                let bend_y = box_info.end_x - start_y as f64;
+                let bwidth = bend_x - box_info.start_x;
+                let bheight = bend_y - box_info.start_y;
+                cairoinfo.rectangle(bstart_x, bstart_y, bwidth, bheight);
+                cairoinfo.set_source_rgba(
+                    self.style.box_color.r,
+                    self.style.box_color.g,
+                    self.style.box_color.b,
+                    self.style.box_color.a,
+                );
+                cairoinfo.fill_preserve().unwrap();
+                cairoinfo.stroke().unwrap();
+            }
+        }
 
         if let Some(endpos) = opt_end_pos {
             let relate_start_x = start_pos_x - start_x as f64;

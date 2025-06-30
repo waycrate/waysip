@@ -334,6 +334,7 @@ impl WaysipState {
                 *start_position,
                 *size,
                 self.is_area(),
+                self.predefined_boxes.as_ref(),
             );
         }
     }

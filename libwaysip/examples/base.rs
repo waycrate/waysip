@@ -28,6 +28,7 @@ fn main() {
             .with_background_color(Color::default())
             .with_foreground_color(Color::default())
             .with_border_text_color(Color::default())
+            .with_box_color(Color::default())
             .with_border_weight(2.0)
             .with_font_size(12)
             .with_font_name("Sans".to_string())

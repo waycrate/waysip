@@ -76,6 +76,10 @@ impl WaySip {
         self.style.border_text_color = color;
         self
     }
+    pub fn with_box_color(mut self, color: Color) -> Self {
+        self.style.box_color = color;
+        self
+    }
     pub fn with_border_weight(mut self, border_weight: f64) -> Self {
         self.style.border_weight = border_weight;
         self

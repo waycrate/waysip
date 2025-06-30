@@ -20,11 +20,15 @@ struct Args {
     #[arg(short = 's', value_name = "#rrggbbaa/rrggbbaa")]
     selection_color: Option<String>,
 
+    /// Set option box color.
+    #[arg(short = 'B', value_name = "#rrggbbaa/rrggbbaa")]
+    box_color: Option<String>,
+
     /// Set border weight.
     #[arg(short = 'F', value_name = "string")]
     font_name: Option<String>,
 
-    /// Set fomt size.
+    /// Set font size.
     #[arg(short = 'S', value_name = "integer")]
     font_size: Option<i32>,
 
@@ -88,6 +92,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     eprintln!("Err: {e}");
                     std::process::exit(1);
                 }));
+        }
+        if let Some(color) = args.box_color.take() {
+            builder = builder.with_box_color(Color::hex_to_color(color).unwrap_or_else(|e| {
+                eprintln!("Err: {e}");
+                std::process::exit(1);
+            }));
         }
         if let Some(border_weight) = args.border_weight.take() {
             let bw = border_weight.parse::<f64>().unwrap_or_else(|_| {
