@@ -375,7 +375,7 @@ pub struct LayerSurfaceInfo {
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
 }
 
-/// coodrinates of box
+/// coordinates of box
 #[derive(Debug)]
 pub struct BoxInfo {
     pub start_x: f64,
