@@ -30,6 +30,62 @@ impl LayerSurfaceInfo {
                 self.style.foreground_color.b,
                 self.style.foreground_color.a,
             );
+            cairoinfo.paint().unwrap();
+
+            cairoinfo.set_source_rgba(
+                self.style.border_text_color.r,
+                self.style.border_text_color.g,
+                self.style.border_text_color.b,
+                self.style.border_text_color.a,
+            );
+
+            let font_size = self.style.font_size;
+            let pangolayout = self
+                .pango_layout
+                .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
+            let desc = self.font_desc_normal.get_or_init(|| {
+                let mut d = pango::FontDescription::new();
+                d.set_family(self.style.font_name.as_str());
+                d.set_weight(pango::Weight::Normal);
+                d.set_size(font_size * pango::SCALE);
+                d
+            });
+            pangolayout.set_font_description(Some(desc));
+
+            let name_txt = format!("{name}  {description}");
+            pangolayout.set_text(&name_txt);
+            let (txt1_x, txt1_y) = pangolayout.pixel_size();
+            cairoinfo.save().unwrap();
+            cairoinfo.move_to(10., 60.);
+            pangocairo::functions::show_layout(cairoinfo, pangolayout);
+            cairoinfo.restore().unwrap();
+
+            let pos_txt = format!("pos: {start_x}, {start_y}");
+            pangolayout.set_text(&pos_txt);
+            let (txt2_x, txt2_y) = pangolayout.pixel_size();
+            cairoinfo.save().unwrap();
+            cairoinfo.move_to(10., txt1_y as f64 + 65.0);
+            pangocairo::functions::show_layout(cairoinfo, pangolayout);
+            cairoinfo.restore().unwrap();
+
+            cairoinfo.save().unwrap();
+            cairoinfo.set_operator(cairo::Operator::DestOver);
+            cairoinfo.rectangle(
+                5.0,
+                55.0,
+                txt1_x.max(txt2_x) as f64 + 10.0,
+                (txt1_y + txt2_y) as f64 + 16.0,
+            );
+            cairoinfo.set_source_rgba(
+                self.style.background_color.r,
+                self.style.background_color.g,
+                self.style.background_color.b,
+                self.style.background_color.a,
+            );
+            cairoinfo.fill().unwrap();
+
+            cairoinfo.restore().unwrap();
+            cairoinfo.set_operator(cairo::Operator::Over);
         } else {
             cairoinfo.set_source_rgba(
                 self.style.background_color.r,
@@ -37,42 +93,8 @@ impl LayerSurfaceInfo {
                 self.style.background_color.b,
                 self.style.background_color.a,
             );
+            cairoinfo.paint().unwrap();
         }
-        cairoinfo.paint().unwrap();
-
-        cairoinfo.set_source_rgba(
-            self.style.border_text_color.r,
-            self.style.border_text_color.g,
-            self.style.border_text_color.b,
-            self.style.border_text_color.a,
-        );
-
-        let font_size = self.style.font_size;
-        let pangolayout = self
-            .pango_layout
-            .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
-        let desc = self.font_desc_normal.get_or_init(|| {
-            let mut d = pango::FontDescription::new();
-            d.set_family(self.style.font_name.as_str());
-            d.set_weight(pango::Weight::Normal);
-            d.set_size(font_size * pango::SCALE);
-            d
-        });
-        pangolayout.set_font_description(Some(desc));
-
-        let name_txt = format!("{name}  {description}");
-        pangolayout.set_text(&name_txt);
-        cairoinfo.save().unwrap();
-        cairoinfo.move_to(10., 60.);
-        pangocairo::functions::show_layout(cairoinfo, pangolayout);
-        cairoinfo.restore().unwrap();
-
-        let pos_txt = format!("pos: {start_x}, {start_y}");
-        pangolayout.set_text(&pos_txt);
-        cairoinfo.save().unwrap();
-        cairoinfo.move_to(10., 90.);
-        pangocairo::functions::show_layout(cairoinfo, pangolayout);
-        cairoinfo.restore().unwrap();
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
         self.wl_surface.damage(0, 0, width, height);
