@@ -1,5 +1,7 @@
+use atty::Stream;
 use clap::Parser;
-use libwaysip::{Color, Position, SelectionType, Size, WaySip};
+use libwaysip::{BoxInfo, Color, Position, SelectionType, Size, WaySip};
+use std::io::Read;
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -31,20 +33,24 @@ struct Args {
     border_weight: Option<String>,
 
     /// Select a single point.
-    #[arg(short = 'p', conflicts_with_all = ["dimensions", "screen", "output"])]
+    #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
     point: bool,
 
     /// Display dimensions of selection.
-    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "output"])]
+    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "output", "boxes"])]
     dimensions: bool,
 
     /// Get screen information
-    #[arg(short = 'i', conflicts_with_all = ["point", "dimensions", "output"])]
+    #[arg(short = 'i', conflicts_with_all = ["point", "dimensions", "output", "boxes"])]
     screen: bool,
 
     /// Select a display output.
-    #[arg(short = 'o', conflicts_with_all = ["point", "dimensions", "screen"])]
+    #[arg(short = 'o', conflicts_with_all = ["point", "dimensions", "screen", "boxes"])]
     output: bool,
+
+    /// Restrict selection to predefined boxes.
+    #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
+    boxes: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -55,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut args = Args::parse();
 
-    let mut run_selection = |sel: SelectionType| {
+    let mut run_selection = |sel: SelectionType, boxes: Option<Vec<BoxInfo>>| {
         let mut builder = WaySip::new().with_selection_type(sel);
 
         if let Some(color) = args.background.take() {
@@ -92,6 +98,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(font_name) = args.font_name.take() {
             builder = builder.with_font_name(font_name);
         }
+        if let Some(boxes) = boxes {
+            builder = builder.with_predefined_boxes(boxes);
+        }
 
         match builder.get() {
             Ok(Some(info)) => info,
@@ -107,19 +116,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     if args.point {
-        let info = run_selection(SelectionType::Point);
+        let info = run_selection(SelectionType::Point, None);
         let Position { x, y } = info.left_top_point();
         println!("{x},{y} 1x1");
     }
     if args.dimensions {
-        let info = run_selection(SelectionType::Area);
+        let info = run_selection(SelectionType::Area, None);
         let Position { x, y } = info.left_top_point();
         let width = info.width();
         let height = info.height();
         println!("{x},{y} {width}x{height}",);
     }
     if args.screen {
-        let info = run_selection(SelectionType::Screen);
+        let info = run_selection(SelectionType::Screen, None);
         let screen_info = info.selected_screen_info();
         let Size {
             width: w,
@@ -137,10 +146,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("width: {wl_w}, height: {wl_h}");
     }
     if args.output {
-        let info = run_selection(SelectionType::Screen);
+        let info = run_selection(SelectionType::Screen, None);
         let screen_info = info.selected_screen_info();
         let Position { x, y } = screen_info.get_position();
         let Size { width, height } = screen_info.get_size();
+        println!("{x},{y} {width}x{height}",);
+    }
+    if args.boxes {
+        if atty::is(Stream::Stdin) {
+            eprintln!("No piped stdin, please pipe a list of boxes to stdin");
+            std::process::exit(1);
+        }
+        let mut input_string = String::new();
+        std::io::stdin()
+            .read_to_string(&mut input_string)
+            .expect("Failed to read stdin");
+
+        if input_string.trim().is_empty() {
+            eprintln!(
+                "Stdin is empty, please provide a list of boxes in the format `x,y WIDTHxHEIGHT`"
+            );
+            std::process::exit(1);
+        }
+        let boxes_strings: Vec<&str> = input_string.lines().collect();
+        let boxes: Vec<BoxInfo> = boxes_strings
+            .iter()
+            .map(|s| BoxInfo::get_box_from_str(s))
+            .collect::<Result<Vec<BoxInfo>, _>>()
+            .unwrap_or_else(|e| {
+                eprintln!("Err: {e}");
+                std::process::exit(1);
+            });
+        let info = run_selection(SelectionType::PredefinedBoxes, Some(boxes));
+        let Position { x, y } = info.left_top_point();
+        let width = info.width();
+        let height = info.height();
         println!("{x},{y} {width}x{height}",);
     }
 

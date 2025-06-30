@@ -25,3 +25,15 @@ pub enum ColorError {
     #[error("Invalid color value: {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
 }
+
+#[derive(Debug, Error)]
+pub enum BoxInfoError {
+    #[error("Invalid string format for Box `{0}`, expected `x,y WIDTHxHEIGHT`")]
+    InvalidBoxString(String),
+    #[error("Invalid box coordinates string `{0}`, expected `x,y`")]
+    InvalidBoxCoordsString(String),
+    #[error("Invalid box size string `{0}`, expected `WIDTHxHEIGHT`")]
+    InvalidBoxSizeString(String),
+    #[error("Invalid box info value: {0}")]
+    ParseFloatError(#[from] std::num::ParseFloatError),
+}

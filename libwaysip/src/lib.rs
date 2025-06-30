@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::SelectionType;
+pub use state::{BoxInfo, SelectionType};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
@@ -43,6 +43,7 @@ pub struct WaySip {
     conn: Option<Connection>,
     selection_type: SelectionType,
     style: Style,
+    predefined_boxes: Option<Vec<state::BoxInfo>>,
 }
 
 impl WaySip {
@@ -87,15 +88,30 @@ impl WaySip {
         self
     }
 
+    pub fn with_predefined_boxes(mut self, boxes: Vec<state::BoxInfo>) -> Self {
+        self.predefined_boxes = Some(boxes);
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         match self.conn {
-            Some(connection) => get_area_inner(&connection, self.selection_type, self.style),
+            Some(connection) => get_area_inner(
+                &connection,
+                self.selection_type,
+                self.style,
+                self.predefined_boxes,
+            ),
             None => {
                 let connection = Connection::connect_to_env()
                     .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
 
-                get_area_inner(&connection, self.selection_type, self.style)
+                get_area_inner(
+                    &connection,
+                    self.selection_type,
+                    self.style,
+                    self.predefined_boxes,
+                )
             }
         }
     }
@@ -105,10 +121,13 @@ fn get_area_inner(
     connection: &Connection,
     selection_type: SelectionType,
     style: Style,
+    boxes: Option<Vec<state::BoxInfo>>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
+
+    state.predefined_boxes = boxes;
 
     let mut event_queue = connection.new_event_queue::<state::WaysipState>();
     let qh = event_queue.handle();

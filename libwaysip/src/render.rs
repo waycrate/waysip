@@ -84,15 +84,13 @@ impl LayerSurfaceInfo {
             x: start_pos_x,
             y: start_pos_y,
         }: Position<f64>,
-        Position {
-            x: endpos_x,
-            y: endpos_y,
-        }: Position<f64>,
+        opt_end_pos: Option<Position<f64>>,
         Position {
             x: start_x,
             y: start_y,
         }: Position,
         Size { width, height }: Size,
+        draw_text: bool,
     ) {
         let cairoinfo = &self.cairo_t;
         cairoinfo.set_operator(cairo::Operator::Source);
@@ -104,59 +102,63 @@ impl LayerSurfaceInfo {
         );
         cairoinfo.paint().unwrap();
 
-        let relate_start_x = start_pos_x - start_x as f64;
-        let relate_start_y = start_pos_y - start_y as f64;
-        let relate_end_x = endpos_x - start_x as f64;
-        let relate_end_y = endpos_y - start_y as f64;
-        let rlwidth = relate_end_x - relate_start_x;
-        let rlheight = relate_end_y - relate_start_y;
+        if let Some(endpos) = opt_end_pos {
+            let relate_start_x = start_pos_x - start_x as f64;
+            let relate_start_y = start_pos_y - start_y as f64;
+            let relate_end_x = endpos.x - start_x as f64;
+            let relate_end_y = endpos.y - start_y as f64;
+            let rlwidth = relate_end_x - relate_start_x;
+            let rlheight = relate_end_y - relate_start_y;
 
-        let start_x = relate_start_x;
-        let start_y = relate_start_y;
+            let start_x = relate_start_x;
+            let start_y = relate_start_y;
 
-        cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
-        cairoinfo.set_source_rgba(
-            self.style.foreground_color.r,
-            self.style.foreground_color.g,
-            self.style.foreground_color.b,
-            self.style.foreground_color.a,
-        );
-        cairoinfo.fill_preserve().unwrap();
-        cairoinfo.set_source_rgba(
-            self.style.border_text_color.r,
-            self.style.border_text_color.g,
-            self.style.border_text_color.b,
-            self.style.border_text_color.a,
-        );
-        cairoinfo.set_line_width(self.style.border_weight);
-        cairoinfo.stroke().unwrap();
+            cairoinfo.rectangle(start_x, start_y, rlwidth, rlheight);
+            cairoinfo.set_source_rgba(
+                self.style.foreground_color.r,
+                self.style.foreground_color.g,
+                self.style.foreground_color.b,
+                self.style.foreground_color.a,
+            );
+            cairoinfo.fill_preserve().unwrap();
+            cairoinfo.set_source_rgba(
+                self.style.border_text_color.r,
+                self.style.border_text_color.g,
+                self.style.border_text_color.b,
+                self.style.border_text_color.a,
+            );
+            cairoinfo.set_line_width(self.style.border_weight);
+            cairoinfo.stroke().unwrap();
 
-        let font_size = self.style.font_size;
-        let pangolayout = self
-            .pango_layout
-            .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
-        let desc = self.font_desc_bold.get_or_init(|| {
-            let mut d = pango::FontDescription::new();
-            d.set_family(self.style.font_name.as_str());
-            d.set_weight(pango::Weight::Bold);
-            d.set_size(font_size * pango::SCALE);
-            d
-        });
-        pangolayout.set_font_description(Some(desc));
+            if draw_text {
+                let font_size = self.style.font_size;
+                let pangolayout = self
+                    .pango_layout
+                    .get_or_init(|| pangocairo::functions::create_layout(cairoinfo));
+                let desc = self.font_desc_bold.get_or_init(|| {
+                    let mut d = pango::FontDescription::new();
+                    d.set_family(self.style.font_name.as_str());
+                    d.set_weight(pango::Weight::Bold);
+                    d.set_size(font_size * pango::SCALE);
+                    d
+                });
+                pangolayout.set_font_description(Some(desc));
 
-        let text = format!(
-            "{},{}, {}x{}",
-            start_pos_x as i32,
-            start_pos_y as i32,
-            (endpos_x - start_pos_x) as i32,
-            (endpos_y - start_pos_y) as i32
-        );
+                let text = format!(
+                    "{},{}, {}x{}",
+                    start_pos_x as i32,
+                    start_pos_y as i32,
+                    (endpos.x - start_pos_x) as i32,
+                    (endpos.y - start_pos_y) as i32
+                );
 
-        pangolayout.set_text(text.as_str());
-        cairoinfo.save().unwrap();
-        cairoinfo.move_to(relate_end_x + 10., relate_end_y + 10.);
-        pangocairo::functions::show_layout(cairoinfo, pangolayout);
-        cairoinfo.restore().unwrap();
+                pangolayout.set_text(text.as_str());
+                cairoinfo.save().unwrap();
+                cairoinfo.move_to(relate_end_x + 10., relate_end_y + 10.);
+                pangocairo::functions::show_layout(cairoinfo, pangolayout);
+                cairoinfo.restore().unwrap();
+            }
+        }
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
         self.wl_surface.damage(0, 0, width, height);

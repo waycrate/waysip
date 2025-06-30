@@ -16,3 +16,4 @@ clap = { version = "4.5.40", features = ["derive"] }
 libwaysip.workspace = true
 tracing.workspace = true
 tracing-subscriber = "0.3"
+atty = "0.2"
