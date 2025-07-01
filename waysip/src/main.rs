@@ -24,7 +24,7 @@ struct Args {
     #[arg(short = 'B', value_name = "#rrggbbaa/rrggbbaa")]
     box_color: Option<String>,
 
-    /// Set border weight.
+    /// Set the font family for the dimensions.
     #[arg(short = 'F', value_name = "string")]
     font_name: Option<String>,
 
