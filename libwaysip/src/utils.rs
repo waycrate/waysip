@@ -69,6 +69,7 @@ pub struct Style {
     pub background_color: Color,
     pub foreground_color: Color,
     pub border_text_color: Color,
+    pub box_color: Color,
     pub border_weight: f64,
     pub font_size: i32,
     pub font_name: String,
@@ -95,6 +96,12 @@ impl Default for Style {
                 b: 0.0,
                 a: 1.0,
             }, // #000000ff
+            box_color: Color {
+                r: 0.4,
+                g: 0.4,
+                b: 0.4,
+                a: 0.5,
+            }, // #66666680
             border_weight: 1.0,
             font_size: 12,
             font_name: "Sans".to_string(),

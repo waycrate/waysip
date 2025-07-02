@@ -18,6 +18,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrL
 
 use crate::{
     Position, Size, Style,
+    error::BoxInfoError,
     render::{self, UiInit},
 };
 
@@ -29,6 +30,7 @@ pub enum SelectionType {
     Area,
     Point,
     Screen,
+    PredefinedBoxes,
 }
 
 #[derive(Debug, Clone)]
@@ -175,6 +177,8 @@ pub struct WaysipState {
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
     pub shm: Option<WlShm>,
     pub qh: Option<QueueHandle<Self>>,
+    pub predefined_boxes: Option<Vec<BoxInfo>>,
+    pub aspect_ratio: Option<(f64, f64)>,
     pub last_redraw: std::time::Instant,
 }
 
@@ -192,6 +196,8 @@ impl WaysipState {
             cursor_manager: None,
             qh: None,
             shm: None,
+            predefined_boxes: None,
+            aspect_ratio: None,
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
         }
     }
@@ -202,6 +208,14 @@ impl WaysipState {
 
     pub fn is_screen(&self) -> bool {
         matches!(self.selection_type, SelectionType::Screen)
+    }
+
+    pub fn is_predefined_boxes(&self) -> bool {
+        matches!(self.selection_type, SelectionType::PredefinedBoxes)
+    }
+
+    pub fn set_boxes(&mut self, boxes: Vec<BoxInfo>) {
+        self.predefined_boxes = Some(boxes);
     }
 
     pub fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
@@ -316,9 +330,11 @@ impl WaysipState {
             }
             info.redraw(
                 self.start_pos.unwrap(),
-                self.current_pos,
+                self.end_pos,
                 *start_position,
                 *size,
+                self.is_area(),
+                self.predefined_boxes.as_ref(),
             );
         }
     }
@@ -334,10 +350,12 @@ impl WaysipState {
         let Position { x: end_x, y: end_y } = self.end_pos.unwrap();
         let output = self.wloutput_infos[self.current_screen].clone();
         Some(AreaInfo {
-            start_x,
-            start_y,
-            end_x,
-            end_y,
+            box_info: BoxInfo {
+                start_x,
+                start_y,
+                end_x,
+                end_y,
+            },
             screen_info: output.get_screen_info(),
         })
     }
@@ -360,21 +378,58 @@ pub struct LayerSurfaceInfo {
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
 }
 
-/// describe the information of the area
+/// coordinates of box
 #[derive(Debug)]
-pub struct AreaInfo {
+pub struct BoxInfo {
     pub start_x: f64,
     pub start_y: f64,
     pub end_x: f64,
     pub end_y: f64,
+}
 
+impl BoxInfo {
+    pub fn get_box_from_str(box_string: &str) -> Result<Self, BoxInfoError> {
+        let (coords, size) = box_string
+            .split_once(' ')
+            .ok_or(BoxInfoError::InvalidBoxString(box_string.to_string()))?;
+        let (start_x, start_y) = coords
+            .split_once(',')
+            .ok_or(BoxInfoError::InvalidBoxCoordsString(coords.to_string()))?;
+        let (width, height) = size
+            .split_once('x')
+            .ok_or(BoxInfoError::InvalidBoxSizeString(size.to_string()))?;
+        let start_x = start_x
+            .parse::<f64>()
+            .map_err(BoxInfoError::ParseFloatError)?;
+        let start_y = start_y
+            .parse::<f64>()
+            .map_err(BoxInfoError::ParseFloatError)?;
+        let width = width
+            .parse::<f64>()
+            .map_err(BoxInfoError::ParseFloatError)?;
+        let height = height
+            .parse::<f64>()
+            .map_err(BoxInfoError::ParseFloatError)?;
+        Ok(BoxInfo {
+            start_x,
+            start_y,
+            end_x: start_x + width,
+            end_y: start_y + height,
+        })
+    }
+}
+
+/// describe the information of the area
+#[derive(Debug)]
+pub struct AreaInfo {
+    pub box_info: BoxInfo,
     pub screen_info: ScreenInfo,
 }
 
 impl AreaInfo {
     /// provide the width of the area as f64
     pub fn width_f64(&self) -> f64 {
-        (self.end_x - self.start_x).abs()
+        (self.box_info.end_x - self.box_info.start_x).abs()
     }
 
     pub fn size(&self) -> Size {
@@ -398,7 +453,7 @@ impl AreaInfo {
 
     /// provide the height of the area as f64
     pub fn height_f64(&self) -> f64 {
-        (self.end_y - self.start_y).abs()
+        (self.box_info.end_y - self.box_info.start_y).abs()
     }
 
     /// provide the width of the area as i32
@@ -409,8 +464,8 @@ impl AreaInfo {
     /// calculate the real start position
     pub fn left_top_point(&self) -> Position {
         Position {
-            x: self.start_x.min(self.end_x) as i32,
-            y: (self.start_y.min(self.end_y)) as i32,
+            x: self.box_info.start_x.min(self.box_info.end_x) as i32,
+            y: (self.box_info.start_y.min(self.box_info.end_y)) as i32,
         }
     }
 

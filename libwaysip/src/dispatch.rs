@@ -220,15 +220,18 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
             wl_pointer::Event::Button { state, .. } => {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
-                        dispatch_state.start_pos = Some(dispatch_state.current_pos);
-                        if !dispatch_state.is_area() {
+                        if !dispatch_state.is_predefined_boxes() {
+                            dispatch_state.start_pos = Some(dispatch_state.current_pos);
+                        }
+                        if !dispatch_state.is_area() && !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             dispatch_state.running = false;
                         }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
-                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                        // if released, this time select is end
+                        if !dispatch_state.is_predefined_boxes() {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        }
                         dispatch_state.running = false;
                     }
                     _ => {}
@@ -299,10 +302,66 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     x: surface_x + start_x as f64,
                     y: surface_y + start_y as f64,
                 };
+                dispatch_state.end_pos = None;
                 if dispatch_state.is_area() {
+                    if let Some(ratio) = dispatch_state.aspect_ratio {
+                        let width_rel = ratio.0;
+                        let height_rel = ratio.1;
+                        let start_pos = dispatch_state
+                            .start_pos
+                            .unwrap_or(dispatch_state.current_pos);
+                        let width = dispatch_state.current_pos.x - start_pos.x;
+                        let height = dispatch_state.current_pos.y - start_pos.y;
+                        if width_rel / height_rel > width / height {
+                            dispatch_state.end_pos = Some(Position {
+                                x: start_pos.x + height * width_rel / height_rel,
+                                y: start_pos.y + height,
+                            });
+                        } else {
+                            dispatch_state.end_pos = Some(Position {
+                                x: start_pos.x + width,
+                                y: start_pos.y + width * height_rel / width_rel,
+                            });
+                        }
+                    } else {
+                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                    }
+
                     let now = std::time::Instant::now();
                     if now.duration_since(dispatch_state.last_redraw)
-                        >= std::time::Duration::from_millis(10)
+                        >= std::time::Duration::from_millis(8)
+                    {
+                        dispatch_state.commit();
+                        dispatch_state.last_redraw = now;
+                    }
+                } else if dispatch_state.is_predefined_boxes() {
+                    let current_pos = dispatch_state.current_pos;
+                    if let Some(box_info) = dispatch_state
+                        .predefined_boxes
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .find(|box_info| {
+                            current_pos.x >= box_info.start_x
+                                && current_pos.x <= box_info.end_x
+                                && current_pos.y >= box_info.start_y
+                                && current_pos.y <= box_info.end_y
+                        })
+                    {
+                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        dispatch_state.start_pos = Some(Position {
+                            x: box_info.start_x,
+                            y: box_info.start_y,
+                        });
+                        dispatch_state.end_pos = Some(Position {
+                            x: box_info.end_x,
+                            y: box_info.end_y,
+                        });
+                    }
+                    let now = std::time::Instant::now();
+                    if now.duration_since(dispatch_state.last_redraw)
+                        >= std::time::Duration::from_millis(20)
+                    // no need to redraw faster as boxes are not moving
                     {
                         dispatch_state.commit();
                         dispatch_state.last_redraw = now;
