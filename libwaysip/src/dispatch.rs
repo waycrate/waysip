@@ -334,8 +334,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         dispatch_state.commit();
                         dispatch_state.last_redraw = now;
                     }
-                }
-                if dispatch_state.is_predefined_boxes() {
+                } else if dispatch_state.is_predefined_boxes() {
                     let current_pos = dispatch_state.current_pos;
                     if let Some(box_info) = dispatch_state
                         .predefined_boxes

@@ -1,6 +1,6 @@
 use atty::Stream;
 use clap::Parser;
-use libwaysip::{BoxInfo, Color, Position, SelectionType, Size, WaySip};
+use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
 use std::io::Read;
 use std::str::FromStr;
 
@@ -35,6 +35,10 @@ struct Args {
     /// Set border weight.
     #[arg(short = 'w', value_name = "float")]
     border_weight: Option<String>,
+
+    /// Set output format.
+    #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
+    format: String,
 
     /// Select a single point.
     #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
@@ -145,42 +149,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let fmt = if args.screen {
+        "Screen : %o %d\nlogic_width: %w, logic_height: %h\nwidth: %L, height: %T".to_string()
+    } else {
+        args.format
+    };
+
     if args.point {
         let info = run_selection(SelectionType::Point, None);
-        let Position { x, y } = info.left_top_point();
-        println!("{x},{y} 1x1");
+        print!("{}", apply_format(&info, &fmt, false));
     }
     if args.dimensions {
         let info = run_selection(SelectionType::Area, None);
-        let Position { x, y } = info.left_top_point();
-        let width = info.width();
-        let height = info.height();
-        println!("{x},{y} {width}x{height}",);
+        print!("{}", apply_format(&info, &fmt, false));
     }
-    if args.screen {
+    if args.output || args.screen {
         let info = run_selection(SelectionType::Screen, None);
-        let screen_info = info.selected_screen_info();
-        let Size {
-            width: w,
-            height: h,
-        } = screen_info.get_size();
-        let name = screen_info.get_name();
-        let description = screen_info.get_description();
-        let Size {
-            width: wl_w,
-            height: wl_h,
-        } = screen_info.get_wloutput_size();
-
-        println!("Screen : {name} {description}");
-        println!("logic_width: {w}, logic_height: {h}");
-        println!("width: {wl_w}, height: {wl_h}");
-    }
-    if args.output {
-        let info = run_selection(SelectionType::Screen, None);
-        let screen_info = info.selected_screen_info();
-        let Position { x, y } = screen_info.get_position();
-        let Size { width, height } = screen_info.get_size();
-        println!("{x},{y} {width}x{height}",);
+        print!("{}", apply_format(&info, &fmt, true));
     }
     if args.boxes {
         if atty::is(Stream::Stdin) {
@@ -208,11 +193,75 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             });
         let info = run_selection(SelectionType::PredefinedBoxes, Some(boxes));
-        let Position { x, y } = info.left_top_point();
-        let width = info.width();
-        let height = info.height();
-        println!("{x},{y} {width}x{height}",);
+        print!("{}", apply_format(&info, &fmt, false));
     }
 
     Ok(())
+}
+
+fn apply_format(info: &AreaInfo, fmt: &str, screen: bool) -> String {
+    let screen_info = info.selected_screen_info();
+    let Position { x: sx, y: sy } = screen_info.get_position();
+    let Size {
+        width: sw,
+        height: sh,
+    } = screen_info.get_size();
+    let Size {
+        width: wl_w,
+        height: wl_h,
+    } = screen_info.get_wloutput_size();
+
+    let (x, y, width, height) = if !screen {
+        let Position { x, y } = info.left_top_point();
+        let w = info.width().max(1);
+        let h = info.height().max(1);
+        (x, y, w, h)
+    } else {
+        let w = sw.max(1);
+        let h = sh.max(1);
+        (sx, sy, w, h)
+    };
+
+    let rel_x = x.saturating_sub(sx);
+    let rel_y = y.saturating_sub(sy);
+    let rel_width = width.min(sw.saturating_sub(rel_x));
+    let rel_height = height.min(sh.saturating_sub(rel_y));
+
+    let out_name = screen_info.get_name();
+    let out_description = screen_info.get_description();
+
+    let mut out = String::with_capacity(fmt.len() * 2);
+    let mut chars = fmt.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            match chars.next().unwrap_or('%') {
+                '%' => out.push('%'),
+                'x' => out.push_str(&x.to_string()),
+                'y' => out.push_str(&y.to_string()),
+                'w' => out.push_str(&width.to_string()),
+                'h' => out.push_str(&height.to_string()),
+                'X' => out.push_str(&rel_x.to_string()),
+                'Y' => out.push_str(&rel_y.to_string()),
+                'W' => out.push_str(&rel_width.to_string()),
+                'H' => out.push_str(&rel_height.to_string()),
+                'o' => out.push_str(out_name),
+                'l' => out.push_str(out_name),
+                'd' => out.push_str(out_description),
+                // Length
+                'L' => out.push_str(&wl_w.to_string()),
+                // Tall
+                'T' => out.push_str(&wl_h.to_string()),
+                other => out.push(other),
+            }
+        } else if c == '\\' {
+            match chars.next().unwrap_or('\\') {
+                '\\' => out.push('\\'),
+                'n' => out.push('\n'),
+                other => out.push(other),
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }

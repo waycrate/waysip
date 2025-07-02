@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::{BoxInfo, SelectionType};
+pub use state::{AreaInfo, BoxInfo, SelectionType};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
