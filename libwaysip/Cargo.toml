@@ -26,7 +26,7 @@ wayland-protocols-wlr = { version = "0.3.8", default-features = false, features 
 
 cairo-rs = "0.20.12"
 pango = "0.20.12"
-pangocairo = "0.20.10"
+pangocairo = "0.21.0"
 
 memmap2 = "0.9.5"
 thiserror = "2.0.12"
