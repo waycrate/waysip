@@ -1,7 +1,6 @@
-use atty::Stream;
 use clap::Parser;
 use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
-use std::io::Read;
+use std::io::{IsTerminal, Read};
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -168,12 +167,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         print!("{}", apply_format(&info, &fmt, true));
     }
     if args.boxes {
-        if atty::is(Stream::Stdin) {
+        let mut stdio = std::io::stdin();
+        if stdio.is_terminal() {
             eprintln!("No piped stdin, please pipe a list of boxes to stdin");
             std::process::exit(1);
         }
         let mut input_string = String::new();
-        std::io::stdin()
+        stdio
             .read_to_string(&mut input_string)
             .expect("Failed to read stdin");
 
