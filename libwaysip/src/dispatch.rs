@@ -220,16 +220,68 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
             wl_pointer::Event::Button { state, .. } => {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
+                        if dispatch_state.is_dimensions_or_output() {
+                            // Record the press time for detecting single click vs drag
+                            dispatch_state.mouse_press_time = Some(std::time::Instant::now());
+                        }
+
                         if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.start_pos = Some(dispatch_state.current_pos);
                         }
-                        if !dispatch_state.is_area() && !dispatch_state.is_predefined_boxes() {
+                        if !dispatch_state.is_area()
+                            && !dispatch_state.is_predefined_boxes()
+                            && !dispatch_state.is_dimensions_or_output()
+                        {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             dispatch_state.running = false;
                         }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
-                        if !dispatch_state.is_predefined_boxes() {
+                        if dispatch_state.is_dimensions_or_output() {
+                            // Determine if this was a single click or drag
+                            let is_single_click =
+                                if let Some(press_time) = dispatch_state.mouse_press_time {
+                                    let duration = press_time.elapsed();
+                                    let mouse_moved = dispatch_state
+                                        .start_pos
+                                        .map(|start| {
+                                            let dx = dispatch_state.current_pos.x - start.x;
+                                            let dy = dispatch_state.current_pos.y - start.y;
+                                            (dx * dx + dy * dy).sqrt() < 5.0 // Less than 5 pixels movement
+                                        })
+                                        .unwrap_or(true);
+
+                                    // Single click if released quickly and mouse didn't move much
+                                    duration < std::time::Duration::from_millis(250) && mouse_moved
+                                } else {
+                                    true // Default to single click if we somehow don't have press time
+                                };
+
+                            if is_single_click {
+                                // Behave like output selection (-o)
+                                dispatch_state.effective_selection_type =
+                                    Some(crate::state::SelectionType::Screen);
+                                // For screen selection, we need to set positions to cover the whole screen
+                                let screen_info = dispatch_state.wloutput_infos
+                                    [dispatch_state.current_screen]
+                                    .xdg_output_info();
+                                dispatch_state.start_pos = Some(Position {
+                                    x: screen_info.start_position.x as f64,
+                                    y: screen_info.start_position.y as f64,
+                                });
+                                dispatch_state.end_pos = Some(Position {
+                                    x: (screen_info.start_position.x + screen_info.size.width)
+                                        as f64,
+                                    y: (screen_info.start_position.y + screen_info.size.height)
+                                        as f64,
+                                });
+                            } else {
+                                // Behave like dimensions selection (-d)
+                                dispatch_state.effective_selection_type =
+                                    Some(crate::state::SelectionType::Area);
+                                dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            }
+                        } else if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                         }
                         dispatch_state.running = false;
@@ -303,7 +355,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     y: surface_y + start_y as f64,
                 };
                 dispatch_state.end_pos = None;
-                if dispatch_state.is_area() {
+                if dispatch_state.is_area() || dispatch_state.is_dimensions_or_output() {
                     if let Some(ratio) = dispatch_state.aspect_ratio {
                         let width_rel = ratio.0;
                         let height_rel = ratio.1;

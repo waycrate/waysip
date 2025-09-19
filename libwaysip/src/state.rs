@@ -31,6 +31,8 @@ pub enum SelectionType {
     Point,
     Screen,
     PredefinedBoxes,
+    /// Combined mode: single click behaves like output selection, drag behaves like dimensions
+    DimensionsOrOutput,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +182,10 @@ pub struct WaysipState {
     pub predefined_boxes: Option<Vec<BoxInfo>>,
     pub aspect_ratio: Option<(f64, f64)>,
     pub last_redraw: std::time::Instant,
+    /// Tracks actual effective selection type for DimensionsOrOutput mode
+    pub effective_selection_type: Option<SelectionType>,
+    /// Time when mouse was pressed down
+    pub mouse_press_time: Option<std::time::Instant>,
 }
 
 impl WaysipState {
@@ -199,6 +205,8 @@ impl WaysipState {
             predefined_boxes: None,
             aspect_ratio: None,
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
+            effective_selection_type: None,
+            mouse_press_time: None,
         }
     }
 
@@ -212,6 +220,25 @@ impl WaysipState {
 
     pub fn is_predefined_boxes(&self) -> bool {
         matches!(self.selection_type, SelectionType::PredefinedBoxes)
+    }
+
+    pub fn is_dimensions_or_output(&self) -> bool {
+        matches!(self.selection_type, SelectionType::DimensionsOrOutput)
+    }
+
+    /// Get the effective selection type, considering DimensionsOrOutput mode
+    pub fn effective_selection_type(&self) -> SelectionType {
+        self.effective_selection_type.unwrap_or(self.selection_type)
+    }
+
+    /// Check if we should behave like area selection (for effective type)
+    pub fn is_effective_area(&self) -> bool {
+        matches!(self.effective_selection_type(), SelectionType::Area)
+    }
+
+    /// Check if we should behave like screen selection (for effective type)
+    pub fn is_effective_screen(&self) -> bool {
+        matches!(self.effective_selection_type(), SelectionType::Screen)
     }
 
     pub fn set_boxes(&mut self, boxes: Vec<BoxInfo>) {
@@ -304,7 +331,7 @@ impl WaysipState {
             ..
         } = self.wloutput_infos[screen_index].xdg_output_info();
 
-        if self.is_screen() {
+        if self.is_screen() || self.is_effective_screen() {
             for (idx, info) in self
                 .wl_surfaces
                 .iter()
@@ -333,7 +360,7 @@ impl WaysipState {
                 self.end_pos,
                 *start_position,
                 *size,
-                self.is_area(),
+                self.is_area() || self.is_effective_area(),
                 self.predefined_boxes.as_ref(),
             );
         }
@@ -357,6 +384,7 @@ impl WaysipState {
                 end_y,
             },
             screen_info: output.get_screen_info(),
+            effective_selection_type: self.effective_selection_type,
         })
     }
 }
@@ -424,6 +452,7 @@ impl BoxInfo {
 pub struct AreaInfo {
     pub box_info: BoxInfo,
     pub screen_info: ScreenInfo,
+    pub effective_selection_type: Option<SelectionType>,
 }
 
 impl AreaInfo {
