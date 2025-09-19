@@ -6,6 +6,7 @@ use std::str::FromStr;
 #[derive(Parser)]
 #[command(name = "waysip")]
 #[command(about="Wayland native area picker", long_about = None)]
+#[command(version)]
 struct Args {
     /// Set background color.
     #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
