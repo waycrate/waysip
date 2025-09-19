@@ -3,10 +3,7 @@ resolver = "2"
 members = ["./waysip", "./libwaysip"]
 
 [workspace.package]
-authors = [
-	"Decodertalkers <aakari@tutanota.com>",
-	"Aakash Sen Sharma <aakashsensharma@gmail.com>",
-]
+authors = ["Decodertalkers <aakari@tutanota.com>", "Aakash Sen Sharma <aakashsensharma@gmail.com>"]
 edition = "2024"
 version = "0.5.0-dev"
 license = "MIT"
@@ -18,4 +15,3 @@ readme = "README.md"
 [workspace.dependencies]
 libwaysip = { version = "0.5.0-dev", path = "./libwaysip" }
 tracing = "0.1"
-

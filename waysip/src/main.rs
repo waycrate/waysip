@@ -44,7 +44,7 @@ struct Args {
     point: bool,
 
     /// Display dimensions of selection.
-    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "output", "boxes"])]
+    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "boxes"])]
     dimensions: bool,
 
     /// Get screen information
@@ -52,7 +52,7 @@ struct Args {
     screen: bool,
 
     /// Select a display output.
-    #[arg(short = 'o', conflicts_with_all = ["point", "dimensions", "screen", "boxes"])]
+    #[arg(short = 'o', conflicts_with_all = ["point", "screen", "boxes"])]
     output: bool,
 
     /// Restrict selection to predefined boxes.
@@ -158,11 +158,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let info = run_selection(SelectionType::Point, None);
         print!("{}", apply_format(&info, &fmt, false));
     }
-    if args.dimensions {
+    if args.dimensions && args.output {
+        // Combined mode: single click = output, drag = dimensions
+        let info = run_selection(SelectionType::DimensionsOrOutput, None);
+        // The effective selection type determines whether we use screen format
+        let use_screen_format =
+            matches!(info.effective_selection_type, Some(SelectionType::Screen));
+        print!("{}", apply_format(&info, &fmt, use_screen_format));
+    } else if args.dimensions {
         let info = run_selection(SelectionType::Area, None);
         print!("{}", apply_format(&info, &fmt, false));
-    }
-    if args.output || args.screen {
+    } else if args.output || args.screen {
         let info = run_selection(SelectionType::Screen, None);
         print!("{}", apply_format(&info, &fmt, true));
     }
