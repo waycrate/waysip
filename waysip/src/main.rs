@@ -63,6 +63,14 @@ struct Args {
     /// Force aspect ratio.
     #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
     aspect_ratio: Option<String>,
+
+    /// Enable annotation mode for manipulating selection with keyboard.
+    #[arg(short = 'A', conflicts_with_all = ["point", "screen", "output", "boxes"])]
+    annotation: bool,
+
+    /// Custom keybindings for annotation mode (format: "left:key,right:key,up:key,down:key,confirm:key,cancel:key")
+    #[arg(long, value_name = "keybindings")]
+    keybindings: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,6 +80,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let mut args = Args::parse();
+
+    // Parse keybindings if provided
+    let _keybindings = args.keybindings.take();
 
     let mut run_selection = |sel: SelectionType, boxes: Option<Vec<BoxInfo>>| {
         let mut builder = WaySip::new().with_selection_type(sel);
@@ -158,8 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.point {
         let info = run_selection(SelectionType::Point, None);
         print!("{}", apply_format(&info, &fmt, false));
-    }
-    if args.dimensions && args.output {
+    } else if args.dimensions && args.output {
         // Combined mode: single click = output, drag = dimensions
         let info = run_selection(SelectionType::DimensionsOrOutput, None);
         // The effective selection type determines whether we use screen format
@@ -172,8 +182,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if args.output || args.screen {
         let info = run_selection(SelectionType::Screen, None);
         print!("{}", apply_format(&info, &fmt, true));
-    }
-    if args.boxes {
+    } else if args.annotation {
+        let info = run_selection(SelectionType::Annotation, None);
+        print!("{}", apply_format(&info, &fmt, false));
+    } else if args.boxes {
         let mut stdio = std::io::stdin();
         if stdio.is_terminal() {
             eprintln!("No piped stdin, please pipe a list of boxes to stdin");

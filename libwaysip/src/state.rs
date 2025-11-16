@@ -22,6 +22,31 @@ use crate::{
     render::{self, UiInit},
 };
 
+/// Keybindings for annotation mode
+#[derive(Debug, Clone)]
+pub struct Keybindings {
+    pub move_left: u32,
+    pub move_right: u32,
+    pub move_up: u32,
+    pub move_down: u32,
+    pub confirm: u32,
+    pub cancel: u32,
+}
+
+impl Default for Keybindings {
+    fn default() -> Self {
+        // Default keybindings: WASD for movement, Enter to confirm, Escape to cancel
+        Self {
+            move_left: 30,   // A key
+            move_right: 32,  // D key
+            move_up: 17,     // W key
+            move_down: 31,   // S key
+            confirm: 28,     // Enter key
+            cancel: 1,       // Escape key
+        }
+    }
+}
+
 /// You are allow to choose three actions of waysip, include area selection, point selection, and
 /// select screen
 #[derive(Debug, Clone, Copy, Default)]
@@ -33,6 +58,8 @@ pub enum SelectionType {
     PredefinedBoxes,
     /// Combined mode: single click behaves like output selection, drag behaves like dimensions
     DimensionsOrOutput,
+    /// Annotation mode: select area and then manipulate with keyboard
+    Annotation,
 }
 
 #[derive(Debug, Clone)]
@@ -186,6 +213,10 @@ pub struct WaysipState {
     pub effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
     pub mouse_press_time: Option<std::time::Instant>,
+    /// Whether we are in annotation mode after initial selection
+    pub annotation_mode: bool,
+    /// Keybindings for annotation mode
+    pub keybindings: Keybindings,
 }
 
 impl WaysipState {
@@ -207,6 +238,8 @@ impl WaysipState {
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
             effective_selection_type: None,
             mouse_press_time: None,
+            annotation_mode: false,
+            keybindings: Keybindings::default(),
         }
     }
 
@@ -224,6 +257,10 @@ impl WaysipState {
 
     pub fn is_dimensions_or_output(&self) -> bool {
         matches!(self.selection_type, SelectionType::DimensionsOrOutput)
+    }
+
+    pub fn is_annotation(&self) -> bool {
+        matches!(self.selection_type, SelectionType::Annotation)
     }
 
     /// Get the effective selection type, considering DimensionsOrOutput mode
@@ -265,7 +302,7 @@ impl WaysipState {
             stride,
         } = render::draw_ui(
             &mut file,
-            (width, width),
+            (width, height),
             surface_info.style.background_color,
         );
         let pool = self
