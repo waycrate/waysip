@@ -7,7 +7,6 @@ use iced_layershell::daemon;
 use iced_layershell::reexport::{Anchor, KeyboardInteractivity};
 use iced_layershell::settings::{LayerShellSettings, Settings};
 use iced_layershell::to_layer_message;
-use image::DynamicImage;
 use libwayshot::WayshotConnection;
 use libwayshot::output::OutputInfo;
 use libwayshot::region::TopLevel;
@@ -48,8 +47,8 @@ enum ViewMode {
 
 pub(crate) struct IcedSelector {
     mode: ViewMode,
-    toplevels: Vec<(TopLevel, iced_image::Handle)>,
-    outputs: Vec<(OutputInfo, iced_image::Handle)>,
+    toplevels: Vec<(TopLevel, Option<iced_image::Handle>)>,
+    outputs: Vec<(OutputInfo, Option<iced_image::Handle>)>,
     sender: Sender<GUISelection>,
 }
 
@@ -68,38 +67,46 @@ impl IcedSelector {
             .map(|mut conn| {
                 let toplevels_info = conn.get_all_toplevels().to_vec();
                 let outputs_info = conn.get_all_outputs().to_vec();
-                let toplevels: Vec<(TopLevel, iced_image::Handle)> = toplevels_info
+
+                // initialize IcedSelector struct with outputs and toplevels obtained 
+                // through Wayshot, alongside their screenshot
+                let toplevels: Vec<(TopLevel, Option<iced_image::Handle>)> = toplevels_info
                     .into_iter()
                     .map(|t| {
-                        let rgba_image = conn
-                            .screenshot_toplevel(t.clone(), false)
-                            .unwrap_or_else(|_| placeholder_image())
-                            .to_rgba8();
                         (
-                            t,
-                            iced_image::Handle::from_rgba(
-                                rgba_image.width(),
-                                rgba_image.height(),
-                                rgba_image.into_raw(),
-                            ),
+                            t.clone(),
+                            // can fail if toplevel capture is not supported
+                            match conn.screenshot_toplevel(t, false) {
+                                Ok(screenshot) => {
+                                    let rgba_image = screenshot.to_rgba8();
+                                    Some(iced_image::Handle::from_rgba(
+                                        rgba_image.width(),
+                                        rgba_image.height(),
+                                        rgba_image.into_raw(),
+                                    ))
+                                },
+                                _ => Option::None,
+                            }
                         )
                     })
                     .collect();
 
-                let outputs: Vec<(OutputInfo, iced_image::Handle)> = outputs_info
+                let outputs: Vec<(OutputInfo, Option<iced_image::Handle>)> = outputs_info
                     .into_iter()
                     .map(|o| {
-                        let rgba_image = conn
-                            .screenshot_single_output(&o, false)
-                            .unwrap_or_else(|_| placeholder_image())
-                            .to_rgba8();
                         (
-                            o,
-                            iced_image::Handle::from_rgba(
-                                rgba_image.width(),
-                                rgba_image.height(),
-                                rgba_image.into_raw(),
-                            ),
+                            o.clone(),
+                            match conn.screenshot_single_output(&o, false) {
+                                Ok(screenshot) => {
+                                    let rgba_image = screenshot.to_rgba8();
+                                    Some(iced_image::Handle::from_rgba(
+                                        rgba_image.width(),
+                                        rgba_image.height(),
+                                        rgba_image.into_raw(),
+                                    ))
+                                },
+                                _ => Option::None,
+                            }
                         )
                     })
                     .collect();
@@ -200,28 +207,27 @@ impl IcedSelector {
     }
 }
 
+// Helper function to build buttons with iced
 fn build_button<'a>(
     label: String,
-    content: iced_image::Handle,
+    content: Option<iced_image::Handle>,
     message: Message,
 ) -> Button<'a, Message> {
-    let button_content = iced_image(content);
-    button(
-        column![
+    let button_content: Element<'a, Message> = match content {
+        Some(image_handle) => column![
             text(label).center().width(Length::Fill),
-            button_content
+            iced_image(image_handle)
                 .width(Length::Fill)
                 .height(Length::Fixed(100.0))
         ]
         .align_x(Alignment::Center)
-        .spacing(5),
-    )
+        .spacing(5)
+        .into(),
+        _ => text(label).center().width(Length::Fill).into(),
+    };
+    button(button_content)
     .on_press(message)
     .width(Length::Fill)
     .style(button::subtle)
     .padding(10)
-}
-
-fn placeholder_image() -> DynamicImage {
-    DynamicImage::new_rgba8(100, 100)
 }
