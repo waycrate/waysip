@@ -1,7 +1,7 @@
 use clap::Parser;
+use libwaysip::gui_selector::{AreaSelectorGUI, GUISelection};
 use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
 use std::io::{IsTerminal, Read};
-use std::str::FromStr;
 
 #[derive(Parser)]
 #[command(name = "waysip")]
@@ -40,6 +40,10 @@ struct Args {
     #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
     format: String,
 
+    /// GUI selector.
+    #[arg(short = 'g', conflicts_with_all = ["point", "screen", "dimensions", "output", "boxes"])]
+    gui_mode: bool,
+
     /// Select a single point.
     #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
     point: bool,
@@ -67,7 +71,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::from_str("trace")?)
+        .with_max_level(tracing::Level::WARN)
         .with_writer(std::io::stderr)
         .init();
 
@@ -155,6 +159,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.format
     };
 
+    if args.gui_mode {
+        match AreaSelectorGUI::new().launch() {
+            GUISelection::Output(output) => println!(
+                "Selected output with title {} and positioned in {}",
+                output.name, output.logical_region
+            ),
+            GUISelection::Toplevel(toplevel) => println!(
+                "Selected toplevel with title {} and app_id {}",
+                toplevel.title, toplevel.app_id
+            ),
+            GUISelection::Failed => println!("GUI selection failed!"),
+        }
+    }
     if args.point {
         let info = run_selection(SelectionType::Point, None);
         print!("{}", apply_format(&info, &fmt, false));
