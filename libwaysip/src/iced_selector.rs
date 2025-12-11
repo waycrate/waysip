@@ -38,7 +38,7 @@ impl IcedSelector {
                 let toplevels_info = conn.get_all_toplevels().to_vec();
                 let outputs_info = conn.get_all_outputs().to_vec();
 
-                // initialize IcedSelector struct with outputs and toplevels obtained
+                // Initialize IcedSelector instance with outputs and toplevels obtained
                 // through Wayshot, alongside their screenshot
                 let toplevels: Vec<(TopLevel, Option<iced_image::Handle>)> = toplevels_info
                     .into_iter()
@@ -153,7 +153,7 @@ impl IcedSelector {
         .padding(20)
         .width(Length::Fill);
 
-        let content: Element<'_, Message> = match self.mode {
+        let choices: Element<'_, Message> = match self.mode {
             ViewMode::Screens => {
                 Column::with_children(self.outputs.iter().enumerate().map(|(i, e)| {
                     build_button(e.0.name.clone(), e.1.clone(), Message::ScreenSelected(i)).into()
@@ -168,7 +168,7 @@ impl IcedSelector {
         .spacing(10)
         .into();
 
-        column![selector, scrollable(content).height(Length::Fill)]
+        column![selector, scrollable(choices).height(Length::Fill)]
             .padding(20)
             .spacing(10)
             .width(Length::Fill)
@@ -177,13 +177,12 @@ impl IcedSelector {
     }
 }
 
-// Helper function to build buttons with iced
 fn build_button<'a>(
     label: String,
-    content: Option<iced_image::Handle>,
+    screenshot: Option<iced_image::Handle>,
     message: Message,
 ) -> Button<'a, Message> {
-    let button_content: Element<'a, Message> = match content {
+    let button_content: Element<'a, Message> = match screenshot {
         Some(image_handle) => column![
             text(label).center().width(Length::Fill),
             iced_image(image_handle)
