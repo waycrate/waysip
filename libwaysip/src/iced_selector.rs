@@ -1,43 +1,13 @@
-use std::sync::mpsc::{self, Sender};
-use std::time::Duration;
+use std::sync::mpsc::Sender;
 
 use iced::widget::{Button, Column, button, column, image as iced_image, row, scrollable, text};
-use iced::{Alignment, Element, Length, Task, Theme};
-use iced_layershell::daemon;
-use iced_layershell::reexport::{Anchor, KeyboardInteractivity};
-use iced_layershell::settings::{LayerShellSettings, Settings};
+use iced::{Alignment, Element, Length, Task};
 use iced_layershell::to_layer_message;
 use libwayshot::WayshotConnection;
 use libwayshot::output::OutputInfo;
 use libwayshot::region::TopLevel;
 
 use crate::gui_selector::GUISelection;
-
-pub fn launch() -> GUISelection {
-    let (tx, rx) = mpsc::channel::<GUISelection>();
-    let _ = daemon(
-        move || IcedSelector::new(tx.clone()),
-        IcedSelector::namespace,
-        IcedSelector::update,
-        IcedSelector::view,
-    )
-    .title(IcedSelector::title)
-    .settings(Settings {
-        layer_settings: LayerShellSettings {
-            size: Some((400, 400)),
-            exclusive_zone: 0,
-            anchor: Anchor::Bottom | Anchor::Left | Anchor::Right | Anchor::Top,
-            keyboard_interactivity: KeyboardInteractivity::None,
-            ..Default::default()
-        },
-        ..Default::default()
-    })
-    .theme(Theme::Dark)
-    .run();
-
-    rx.recv_timeout(Duration::from_secs(10))
-        .unwrap_or(GUISelection::Failed)
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ViewMode {
@@ -68,7 +38,7 @@ impl IcedSelector {
                 let toplevels_info = conn.get_all_toplevels().to_vec();
                 let outputs_info = conn.get_all_outputs().to_vec();
 
-                // initialize IcedSelector struct with outputs and toplevels obtained 
+                // initialize IcedSelector struct with outputs and toplevels obtained
                 // through Wayshot, alongside their screenshot
                 let toplevels: Vec<(TopLevel, Option<iced_image::Handle>)> = toplevels_info
                     .into_iter()
@@ -84,9 +54,9 @@ impl IcedSelector {
                                         rgba_image.height(),
                                         rgba_image.into_raw(),
                                     ))
-                                },
+                                }
                                 _ => Option::None,
-                            }
+                            },
                         )
                     })
                     .collect();
@@ -104,9 +74,9 @@ impl IcedSelector {
                                         rgba_image.height(),
                                         rgba_image.into_raw(),
                                     ))
-                                },
+                                }
                                 _ => Option::None,
-                            }
+                            },
                         )
                     })
                     .collect();
@@ -226,8 +196,8 @@ fn build_button<'a>(
         _ => text(label).center().width(Length::Fill).into(),
     };
     button(button_content)
-    .on_press(message)
-    .width(Length::Fill)
-    .style(button::subtle)
-    .padding(10)
+        .on_press(message)
+        .width(Length::Fill)
+        .style(button::subtle)
+        .padding(10)
 }
