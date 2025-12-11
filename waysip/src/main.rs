@@ -40,10 +40,6 @@ struct Args {
     #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
     format: String,
 
-    /// GUI selector.
-    #[arg(short = 'g', conflicts_with_all = ["point", "screen", "dimensions", "output", "boxes"])]
-    gui_mode: bool,
-
     /// Select a single point.
     #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
     point: bool,
@@ -67,6 +63,25 @@ struct Args {
     /// Force aspect ratio.
     #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
     aspect_ratio: Option<String>,
+
+    /// GUI selector.
+    #[arg(short = 'g', conflicts_with_all = [
+        "point", 
+        "screen", 
+        "dimensions", 
+        "output", 
+        "boxes", 
+        "background", 
+        "border_color", 
+        "selection_color", 
+        "box_color", 
+        "font_name", 
+        "font_size", 
+        "border_weight", 
+        "format", 
+        "aspect_ratio"
+    ])]
+    gui_mode: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -159,19 +174,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.format
     };
 
-    if args.gui_mode {
-        match AreaSelectorGUI::new().launch() {
-            GUISelection::Output(output) => println!(
-                "Selected output with title {} and positioned in {}",
-                output.name, output.logical_region
-            ),
-            GUISelection::Toplevel(toplevel) => println!(
-                "Selected toplevel with title {} and app_id {}",
-                toplevel.title, toplevel.app_id
-            ),
-            GUISelection::Failed => println!("GUI selection failed!"),
-        }
-    }
     if args.point {
         let info = run_selection(SelectionType::Point, None);
         print!("{}", apply_format(&info, &fmt, false));
@@ -218,6 +220,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             });
         let info = run_selection(SelectionType::PredefinedBoxes, Some(boxes));
         print!("{}", apply_format(&info, &fmt, false));
+    }
+
+    if args.gui_mode {
+        match AreaSelectorGUI::new().launch() {
+            GUISelection::Output(output) => println!(
+                "Selected output with title {} and positioned in {}",
+                output.name, output.logical_region
+            ),
+            GUISelection::Toplevel(toplevel) => println!(
+                "Selected toplevel with title {} and app_id {}",
+                toplevel.title, toplevel.app_id
+            ),
+            GUISelection::Failed => println!("GUI selection failed!"),
+        }
     }
 
     Ok(())
