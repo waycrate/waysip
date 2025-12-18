@@ -17,6 +17,8 @@ jobs:
       image: archlinux:latest
     steps:
     - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy rustfmt
     - uses: actions/checkout@v5
     - name: Install deps
       run: |
