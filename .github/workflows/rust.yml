@@ -17,7 +17,7 @@ jobs:
       image: archlinux:latest
     steps:
     - uses: dtolnay/rust-toolchain@stable
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Install deps
       run: |
         pacman -Syu --noconfirm egl-wayland egl-gbm wayland base-devel mesa pango cairo
