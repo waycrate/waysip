@@ -438,7 +438,7 @@ impl Dispatch<WlCallback, usize> for state::WaysipState {
             if *screen_index != state.current_screen {
                 return;
             }
-            state.redraw_current_surface();
+            state.redraw_all_surface();
         }
     }
 }

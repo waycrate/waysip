@@ -313,6 +313,12 @@ impl WaysipState {
         self.redraw(&surface_info.layer);
     }
 
+    pub fn redraw_all_surface(&self) {
+        for surface_info in &self.wl_surfaces {
+            self.redraw(&surface_info.layer);
+        }
+    }
+
     pub fn redraw(&self, surface: &ZwlrLayerSurfaceV1) {
         let Some(screen_index) = self
             .wl_surfaces
