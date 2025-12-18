@@ -13,12 +13,14 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    container:
+      image: archlinux:latest
     steps:
     - uses: dtolnay/rust-toolchain@stable
     - uses: actions/checkout@v5
     - name: Install deps
-      run: sudo apt install -y libpango1.0-dev libcairo2-dev
+      run: |
+        pacman -Syu --noconfirm egl-wayland egl-gbm wayland base-devel mesa pango cairo
     - name: Run clippy check
       run: cargo clippy -- -D warnings
     - name: Run fmt check
@@ -27,3 +29,32 @@ jobs:
       run: cargo build --verbose --release
     - name: Run tests
       run: cargo test --verbose --release
+  publish-crate:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    permissions:
+      contents: write
+      id-token: write
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy rustfmt
+    - name: Install wayland dependencies
+      run: |
+        pacman -Syu --noconfirm egl-wayland egl-gbm wayland base-devel mesa pango cairo
+    - name: Obtain crates.io token
+      uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1.0.3
+      id: auth
+    - name: Publish to crates.io
+      run: |
+        cargo publish --workspace
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        CARGO_PUBLISH: true
