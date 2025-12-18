@@ -30,3 +30,8 @@ pangocairo = "0.21.1"
 
 memmap2 = "0.9.7"
 thiserror = "2.0.14"
+
+iced = { version = "0.14", features = ["image"] }
+iced_layershell = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master" }
+libwayshot = { git = "https://github.com/waycrate/wayshot", branch = "main" }
+image = { version = "0.25", default-features = false }
