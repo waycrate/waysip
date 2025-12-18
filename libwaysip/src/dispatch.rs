@@ -201,8 +201,59 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_keyboard::Event::Key { key: 1, .. } = event {
-            state.running = false;
+        if let wl_keyboard::Event::Key { key, state: key_state, .. } = event {
+            if key_state != WEnum::Value(wl_keyboard::KeyState::Pressed) {
+                return;
+            }
+            let keybindings = state.keybindings.clone();
+            if state.annotation_mode {
+                // Handle annotation mode keybindings
+                if key == keybindings.move_left {
+                    if let Some(ref mut start) = state.start_pos {
+                        start.x -= 1.0;
+                    }
+                    if let Some(ref mut end) = state.end_pos {
+                        end.x -= 1.0;
+                    }
+                    state.redraw_current_surface();
+                    state.commit();
+                } else if key == keybindings.move_right {
+                    if let Some(ref mut start) = state.start_pos {
+                        start.x += 1.0;
+                    }
+                    if let Some(ref mut end) = state.end_pos {
+                        end.x += 1.0;
+                    }
+                    state.redraw_current_surface();
+                    state.commit();
+                } else if key == keybindings.move_up {
+                    if let Some(ref mut start) = state.start_pos {
+                        start.y -= 1.0;
+                    }
+                    if let Some(ref mut end) = state.end_pos {
+                        end.y -= 1.0;
+                    }
+                    state.redraw_current_surface();
+                    state.commit();
+                } else if key == keybindings.move_down {
+                    if let Some(ref mut start) = state.start_pos {
+                        start.y += 1.0;
+                    }
+                    if let Some(ref mut end) = state.end_pos {
+                        end.y += 1.0;
+                    }
+                    state.redraw_current_surface();
+                    state.commit();
+                } else if key == keybindings.confirm {
+                    state.running = false;
+                } else if key == keybindings.cancel {
+                    state.running = false;
+                }
+            } else {
+                if key == keybindings.cancel {
+                    state.running = false;
+                }
+            }
         }
     }
 }
@@ -284,7 +335,11 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         } else if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                         }
-                        dispatch_state.running = false;
+                        if dispatch_state.is_annotation() {
+                            dispatch_state.annotation_mode = true;
+                        } else {
+                            dispatch_state.running = false;
+                        }
                     }
                     _ => {}
                 }
