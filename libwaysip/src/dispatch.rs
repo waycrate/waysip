@@ -285,9 +285,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
                         }
                         dispatch_state.running = false;
-                    }
-                    _ => {}
-                }
+                    
+                    
                 dispatch_state.commit();
             }
             wl_pointer::Event::Enter {
