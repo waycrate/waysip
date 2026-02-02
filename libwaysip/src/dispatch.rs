@@ -289,6 +289,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     
                 dispatch_state.commit();
             }
+            }
             wl_pointer::Event::Enter {
                 serial,
                 surface,
