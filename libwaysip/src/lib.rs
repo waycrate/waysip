@@ -8,7 +8,7 @@ pub use utils::*;
 
 use error::WaySipError;
 use render::UiInit;
-pub use state::{AreaInfo, BoxInfo, SelectionType};
+pub use state::{AreaInfo, BoxInfo, SelectionType, Keybindings};
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
@@ -45,6 +45,7 @@ pub struct WaySip {
     style: Style,
     predefined_boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
+    keybindings: Option<state::Keybindings>,
 }
 
 impl WaySip {
@@ -103,6 +104,11 @@ impl WaySip {
         self
     }
 
+    pub fn with_keybindings(mut self, keybindings: state::Keybindings) -> Self {
+        self.keybindings = Some(keybindings);
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         match self.conn {
@@ -112,6 +118,7 @@ impl WaySip {
                 self.style,
                 self.predefined_boxes,
                 self.aspect_ratio,
+                self.keybindings,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -123,6 +130,7 @@ impl WaySip {
                     self.style,
                     self.predefined_boxes,
                     self.aspect_ratio,
+                    self.keybindings,
                 )
             }
         }
@@ -135,6 +143,7 @@ fn get_area_inner(
     style: Style,
     boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
+    keybindings: Option<state::Keybindings>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -142,6 +151,9 @@ fn get_area_inner(
 
     state.predefined_boxes = boxes;
     state.aspect_ratio = aspect_ratio;
+    if let Some(kb) = keybindings {
+        state.keybindings = kb;
+    }
 
     let mut event_queue = connection.new_event_queue::<state::WaysipState>();
     let qh = event_queue.handle();
