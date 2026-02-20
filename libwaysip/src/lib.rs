@@ -2,9 +2,16 @@ mod dispatch;
 mod render;
 
 pub mod error;
+#[cfg(feature = "gui")]
+pub mod gui_selector;
+#[cfg(feature = "gui")]
+pub mod iced_selector;
 pub mod state;
 mod utils;
 pub use utils::*;
+
+#[cfg(feature = "gui")]
+mod localization;
 
 use error::WaySipError;
 use render::UiInit;

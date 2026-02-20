@@ -1,73 +1,117 @@
 use clap::Parser;
+#[cfg(feature = "gui")]
+use libwaysip::gui_selector::{AreaSelectorGUI, GUISelection, WaySipTheme};
 use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
 use std::io::{IsTerminal, Read};
-use std::str::FromStr;
 
 #[derive(Parser)]
 #[command(name = "waysip")]
 #[command(about="Wayland native area picker", long_about = None)]
 #[command(version)]
+#[command(group(
+    clap::ArgGroup::new("cli_mode_args")
+        .args(["point", "screen", "dimensions", "output", "boxes", "background", "border_color", "selection_color", "box_color", "font_name", "font_size", "border_weight", "format", "aspect_ratio"])
+        .multiple(true)
+        .conflicts_with("gui_mode_args")
+))]
+#[command(group(
+    clap::ArgGroup::new("gui_mode_args")
+        .args(["gui_mode", "theme"])
+        .multiple(true)
+        .conflicts_with("cli_mode_args")
+))]
 struct Args {
     /// Set background color.
-    #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
+    #[arg(
+        short = 'b',
+        value_name = "#rrggbbaa/rrggbbaa",
+        group = "cli_mode_args"
+    )]
     background: Option<String>,
 
     /// Set border and text color.
-    #[arg(short = 'c', value_name = "#rrggbbaa/rrggbbaa")]
+    #[arg(
+        short = 'c',
+        value_name = "#rrggbbaa/rrggbbaa",
+        group = "cli_mode_args"
+    )]
     border_color: Option<String>,
 
     /// Set selection color.
-    #[arg(short = 's', value_name = "#rrggbbaa/rrggbbaa")]
+    #[arg(
+        short = 's',
+        value_name = "#rrggbbaa/rrggbbaa",
+        group = "cli_mode_args"
+    )]
     selection_color: Option<String>,
 
     /// Set option box color.
-    #[arg(short = 'B', value_name = "#rrggbbaa/rrggbbaa")]
+    #[arg(
+        short = 'B',
+        value_name = "#rrggbbaa/rrggbbaa",
+        group = "cli_mode_args"
+    )]
     box_color: Option<String>,
 
     /// Set the font family for the dimensions.
-    #[arg(short = 'F', value_name = "string")]
+    #[arg(short = 'F', value_name = "string", group = "cli_mode_args")]
     font_name: Option<String>,
 
     /// Set font size.
-    #[arg(short = 'S', value_name = "integer")]
+    #[arg(short = 'S', value_name = "integer", group = "cli_mode_args")]
     font_size: Option<i32>,
 
     /// Set border weight.
-    #[arg(short = 'w', value_name = "float")]
+    #[arg(short = 'w', value_name = "float", group = "cli_mode_args")]
     border_weight: Option<String>,
 
     /// Set output format.
-    #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
+    #[arg(
+        short = 'f',
+        value_name = "string",
+        default_value = "%x,%y %wx%h\n",
+        group = "cli_mode_args"
+    )]
     format: String,
 
     /// Select a single point.
-    #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
+    #[arg(short = 'p', group = "cli_mode_args", conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
     point: bool,
 
     /// Display dimensions of selection.
-    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "boxes"])]
+    #[arg(short = 'd', group = "cli_mode_args", conflicts_with_all = ["point", "screen", "boxes"])]
     dimensions: bool,
 
     /// Get screen information
-    #[arg(short = 'i', conflicts_with_all = ["point", "dimensions", "output", "boxes"])]
+    #[arg(short = 'i', group = "cli_mode_args", conflicts_with_all = ["point", "dimensions", "output", "boxes"])]
     screen: bool,
 
     /// Select a display output.
-    #[arg(short = 'o', conflicts_with_all = ["point", "screen", "boxes"])]
+    #[arg(short = 'o', group = "cli_mode_args", conflicts_with_all = ["point", "screen", "boxes"])]
     output: bool,
 
     /// Restrict selection to predefined boxes.
-    #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
+    #[arg(short = 'r', group = "cli_mode_args", conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
     boxes: bool,
 
     /// Force aspect ratio.
-    #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
+    #[arg(short = 'a', value_name = "width:height", group = "cli_mode_args", conflicts_with_all = ["point", "screen", "output", "boxes"])]
     aspect_ratio: Option<String>,
+
+    /// GUI selector.
+    #[arg(short = 'g', group = "gui_mode_args")]
+    #[cfg(feature = "gui")]
+    gui_mode: bool,
+
+    /// Set the theme for the GUI selector.
+    #[arg(short = 't', value_enum, default_value_t = WaySipTheme::Dark, group = "gui_mode_args")]
+    #[cfg(feature = "gui")]
+    theme: WaySipTheme,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::from_str("trace")?)
+        .with_max_level(tracing::Level::WARN)
         .with_writer(std::io::stderr)
         .init();
 
@@ -201,6 +245,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             });
         let info = run_selection(SelectionType::PredefinedBoxes, Some(boxes));
         print!("{}", apply_format(&info, &fmt, false));
+    }
+
+    #[cfg(feature = "gui")]
+    if args.gui_mode {
+        match AreaSelectorGUI::new().with_theme(args.theme).launch() {
+            GUISelection::Output(output) => println!(
+                "Selected output with title {} and positioned in {}",
+                output.name, output.logical_region
+            ),
+            GUISelection::Toplevel(toplevel) => println!(
+                "Selected toplevel with title {} and app_id {}",
+                toplevel.title, toplevel.app_id
+            ),
+            GUISelection::Failed => println!("GUI selection failed!"),
+        }
     }
 
     Ok(())

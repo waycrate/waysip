@@ -30,3 +30,22 @@ pangocairo = "0.21.1"
 
 memmap2 = "0.9.7"
 thiserror = "2.0.14"
+
+iced = { version = "0.14", features = ["image"], optional = true }
+iced_runtime = { version = "0.14", optional = true }
+iced_layershell = { version = "0.15", optional = true }
+libwayshot = { version = "0.7.2", optional = true }
+image = { version = "0.25", default-features = false, optional = true }
+futures-channel = { version = "0.3.31", optional = true }
+i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"], optional = true }
+# rust-embed resolves path from the location of execution
+# in debug mode, add feature debug-embed to avoid it during development
+# https://crates.io/crates/rust-embed
+rust-embed = { version = "8.11.0", optional = true }
+i18n-embed-fl = { version = "0.10", optional = true }
+tracing = { version = "0.1", optional = true }
+clap = { version = "4.5.44", optional = true }
+
+[features]
+gui = ["dep:iced", "dep:iced_runtime", "dep:iced_layershell", "dep:libwayshot", "dep:image", "dep:futures-channel", "dep:i18n-embed", "dep:rust-embed", "dep:i18n-embed-fl", "dep:tracing", "dep:clap"]
+debug = ["rust-embed?/debug-embed"]
