@@ -1,25 +1,18 @@
-{
-  pkgs,
-  fenix,
-}: let
-  fenixPkgs = fenix.packages.${pkgs.system};
-  rust-toolchain = with fenixPkgs.latest;
-    fenixPkgs.combine [
-      cargo
-      rustc
-      rust-analyzer
-      rustfmt
-      clippy
-    ];
-in
-  pkgs.mkShell rec {
+{ pkgs,
+  ...
+}: pkgs.mkShell rec {
     name = "Waysip-devel";
     nativeBuildInputs = with pkgs; [
+      # linker
       pkg-config
-      rust-toolchain
+      # rust
+      rustc
+      cargo
+      scdoc
 
       # Tools
-      scdoc
+      clippy
+      rust-analyzer
       cargo-flamegraph
       cargo-audit
       cargo-xbuild
@@ -28,7 +21,5 @@ in
     buildInputs = with pkgs; [
       glib
       pango
-      cairo
     ];
-    LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
   }
