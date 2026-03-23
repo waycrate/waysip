@@ -176,7 +176,7 @@ fn get_area_inner(
     // register this
 
     event_queue
-        .blocking_dispatch(&mut state)
+        .roundtrip(&mut state)
         .map_err(WaySipError::DispatchError)?; // then make a dispatch
 
     let xdg_output_manager = globals
@@ -192,7 +192,7 @@ fn get_area_inner(
     }
 
     event_queue
-        .blocking_dispatch(&mut state)
+        .roundtrip(&mut state)
         .map_err(WaySipError::DispatchError)?; // then make a dispatch
 
     // you will find you get the outputs, but if you do not
