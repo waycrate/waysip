@@ -1,36 +1,23 @@
-{
-  fenix,
-  pkgs,
-  lib,
+{ lib,
+  rustPlatform,
+  pkg-config,
+  glib,
+  pango,
   ...
-}: let
-  toolchain = fenix.packages.${pkgs.system}.latest.toolchain;
-  rustPlatformNightly = pkgs.makeRustPlatform {
-    cargo = toolchain;
-    rustc = toolchain;
-  };
-in
-  rustPlatformNightly.buildRustPackage rec {
+}: rustPlatform.buildRustPackage rec {
     pname = "waysip";
-    version = "0.5.0-dev";
-
-    auditable = false;
-
     src = lib.cleanSource ../.;
+
+    version = "${(builtins.fromTOML (builtins.readFile (src + "/Cargo.toml"))).workspace.package.version}-git";
 
     cargoLock.lockFile = "${src}/Cargo.lock";
 
-    nativeBuildInputs = with pkgs; [
+    nativeBuildInputs = [
       pkg-config
     ];
 
-    buildInputs = with pkgs; [
+    buildInputs = [
       glib
       pango
-      cairo
     ];
-    postFixup = ''
-      patchelf $out/bin/waysip \
-        --add-rpath ${lib.makeLibraryPath buildInputs}
-    '';
   }
