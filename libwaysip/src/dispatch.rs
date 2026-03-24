@@ -1,6 +1,6 @@
 use crate::{
     Position, Size,
-    state::{self, LayerSurfaceInfo, WaysipState},
+    state::{self, LayerSurfaceInfo, WaysipState, ZXdgOutputInfo},
 };
 use wayland_client::{
     Connection, Dispatch, Proxy, WEnum, delegate_noop,
@@ -118,7 +118,16 @@ impl Dispatch<wl_registry::WlRegistry, ()> for state::WaysipState {
 
         if interface == wl_output::WlOutput::interface().name {
             let output = proxy.bind::<wl_output::WlOutput, _, _>(name, version, qh, ());
-            state.wloutput_infos.push(state::WlOutputInfo::new(output));
+            let zxdgoutput =
+                state
+                    .zxdg_output_manager
+                    .get()
+                    .unwrap()
+                    .get_xdg_output(&output, qh, ());
+            let zxdg_output_info = ZXdgOutputInfo::new(zxdgoutput);
+            state
+                .wloutput_infos
+                .push(state::WlOutputInfo::new(output, zxdg_output_info));
         }
     }
 }

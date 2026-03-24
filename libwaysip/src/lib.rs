@@ -165,6 +165,14 @@ fn get_area_inner(
     if cursor_manager.is_none() && cursor_buffer.is_none() {
         return Err(WaySipError::CursorThemeFetchFailed);
     }
+    state
+        .zxdg_output_manager
+        .set(
+            globals
+                .bind::<ZxdgOutputManagerV1, _, _>(&qh, 1..=3, ())
+                .map_err(WaySipError::NotSupportedProtocol)?,
+        )
+        .expect("Only can be set once");
 
     state.cursor_manager = cursor_manager;
 
@@ -178,18 +186,6 @@ fn get_area_inner(
     event_queue
         .roundtrip(&mut state)
         .map_err(WaySipError::DispatchError)?; // then make a dispatch
-
-    let xdg_output_manager = globals
-        .bind::<ZxdgOutputManagerV1, _, _>(&qh, 1..=3, ())
-        .map_err(WaySipError::NotSupportedProtocol)?;
-
-    for wloutput in state.wloutput_infos.iter_mut() {
-        let zwloutput = xdg_output_manager.get_xdg_output(wloutput.get_output(), &qh, ());
-        wloutput
-            .xdg_output_info
-            .set(state::ZXdgOutputInfo::new(zwloutput))
-            .expect("should be set only once");
-    }
 
     event_queue
         .roundtrip(&mut state)

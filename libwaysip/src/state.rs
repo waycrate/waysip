@@ -12,7 +12,7 @@ use wayland_client::{
 use wayland_cursor::CursorImageBuffer;
 use wayland_protocols::{
     wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
-    xdg::xdg_output::zv1::client::zxdg_output_v1,
+    xdg::xdg_output::zv1::client::{zxdg_output_manager_v1::ZxdgOutputManagerV1, zxdg_output_v1},
 };
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1;
 
@@ -65,24 +65,20 @@ pub struct WlOutputInfo {
     pub description: String,
     pub name: String,
     pub size: Size,
-    pub xdg_output_info: OnceCell<ZXdgOutputInfo>,
+    pub xdg_output_info: ZXdgOutputInfo,
 }
 
 impl WlOutputInfo {
     pub(crate) fn xdg_output_info_mut(&mut self) -> &mut ZXdgOutputInfo {
-        self.xdg_output_info.get_mut().expect("should inited")
+        &mut self.xdg_output_info
     }
     pub(crate) fn xdg_output_info(&self) -> &ZXdgOutputInfo {
-        self.xdg_output_info.get().expect("should inited")
+        &self.xdg_output_info
     }
     pub(crate) fn zxdg_output(&self) -> &zxdg_output_v1::ZxdgOutputV1 {
-        &self
-            .xdg_output_info
-            .get()
-            .expect("should inited")
-            .zxdg_output
+        &self.xdg_output_info.zxdg_output
     }
-    pub fn new(output: WlOutput) -> Self {
+    pub fn new(output: WlOutput, xdg_output_info: ZXdgOutputInfo) -> Self {
         Self {
             output,
             description: "".to_string(),
@@ -91,7 +87,7 @@ impl WlOutputInfo {
                 width: 0,
                 height: 0,
             },
-            xdg_output_info: OnceCell::new(),
+            xdg_output_info,
         }
     }
     pub fn get_screen_info(&self) -> ScreenInfo {
@@ -177,6 +173,7 @@ pub struct WaysipState {
     pub end_pos: Option<Position<f64>>,
     pub current_screen: usize,
     pub cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub zxdg_output_manager: OnceCell<ZxdgOutputManagerV1>,
     pub shm: Option<WlShm>,
     pub qh: Option<QueueHandle<Self>>,
     pub predefined_boxes: Option<Vec<BoxInfo>>,
@@ -200,6 +197,7 @@ impl WaysipState {
             end_pos: None,
             current_screen: 0,
             cursor_manager: None,
+            zxdg_output_manager: OnceCell::new(),
             qh: None,
             shm: None,
             predefined_boxes: None,
