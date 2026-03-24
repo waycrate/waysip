@@ -265,7 +265,7 @@ impl WaysipState {
             stride,
         } = render::draw_ui(
             &mut file,
-            (width, width),
+            (width, height),
             surface_info.style.background_color,
         );
         let pool = self
@@ -308,34 +308,28 @@ impl WaysipState {
         }
     }
 
-    pub fn redraw_current_surface(&self) {
-        let surface_info = &self.wl_surfaces[self.current_screen];
-        self.redraw(&surface_info.layer);
+    pub fn redraw_current_surface(&mut self) {
+        self.redraw(self.current_screen);
     }
 
-    pub fn redraw_all_surface(&self) {
-        for surface_info in &self.wl_surfaces {
-            self.redraw(&surface_info.layer);
+    pub fn redraw_all_surface(&mut self) {
+        for i in 0..self.wl_surfaces.len() {
+            self.redraw(i);
         }
     }
 
-    pub fn redraw(&self, surface: &ZwlrLayerSurfaceV1) {
-        let Some(screen_index) = self
-            .wl_surfaces
-            .iter()
-            .position(|info| info.layer == *surface)
-        else {
+    pub fn redraw(&mut self, screen_index: usize) {
+        if screen_index >= self.wl_surfaces.len() {
             return;
-        };
+        }
 
-        let info = &self.wl_surfaces[screen_index];
         let ZXdgOutputInfo {
             size,
             start_position,
             name,
             description,
             ..
-        } = self.wloutput_infos[screen_index].xdg_output_info();
+        } = self.wloutput_infos[screen_index].xdg_output_info().clone();
 
         if self.is_screen()
             || self.is_effective_screen()
@@ -343,35 +337,39 @@ impl WaysipState {
             // else dimension select
             || (self.is_dimensions_or_output() && self.start_pos.is_none())
         {
-            for (idx, info) in self
-                .wl_surfaces
-                .iter()
-                .enumerate()
-                .filter(|(_, i)| i.inited)
-            {
+            let current_screen = self.current_screen;
+            for idx in 0..self.wl_surfaces.len() {
+                if !self.wl_surfaces[idx].inited {
+                    continue;
+                }
                 let ZXdgOutputInfo {
                     size,
                     start_position,
                     ..
-                } = &self.wloutput_infos[idx].xdg_output_info();
-                info.redraw_select_screen(
-                    idx == self.current_screen,
-                    *size,
-                    *start_position,
-                    name,
-                    description,
+                } = self.wloutput_infos[idx].xdg_output_info().clone();
+                self.wl_surfaces[idx].redraw_select_screen(
+                    idx == current_screen,
+                    size,
+                    start_position,
+                    &name,
+                    &description,
                 );
             }
         } else {
             if self.start_pos.is_none() {
                 return;
             }
-            info.redraw(
-                self.start_pos.unwrap(),
-                self.end_pos,
-                *start_position,
-                *size,
-                self.is_area() || self.is_effective_area() || self.is_dimensions_or_output(),
+            let start_pos = self.start_pos.unwrap();
+            let end_pos = self.end_pos.unwrap_or(start_pos);
+            let draw_text =
+                self.is_area() || self.is_effective_area() || self.is_dimensions_or_output();
+
+            self.wl_surfaces[screen_index].redraw(
+                start_pos,
+                end_pos,
+                start_position,
+                size,
+                draw_text,
                 self.predefined_boxes.as_ref(),
             );
         }
@@ -415,6 +413,8 @@ pub struct LayerSurfaceInfo {
     pub pango_layout: std::cell::OnceCell<pango::Layout>,
     pub font_desc_bold: std::cell::OnceCell<pango::FontDescription>,
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
+    pub prev_selection: Option<[f64; 4]>,
+    pub margin: std::cell::OnceCell<(f64, f64)>,
 }
 
 /// coordinates of box

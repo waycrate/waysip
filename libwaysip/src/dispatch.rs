@@ -50,7 +50,6 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaysipState {
 
             state.ensure_buffer(surface, (width, height));
             state.ensure_init(surface);
-            state.redraw(surface);
         }
     }
 }
