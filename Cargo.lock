@@ -382,7 +382,7 @@ checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
 name = "libwaysip"
-version = "0.7.0"
+version = "0.6.1"
 dependencies = [
  "cairo-rs",
  "memmap2",
@@ -908,7 +908,7 @@ dependencies = [
 
 [[package]]
 name = "waysip"
-version = "0.7.0"
+version = "0.6.1"
 dependencies = [
  "clap",
  "libwaysip",

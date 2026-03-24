@@ -11,6 +11,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
 
 jobs:
   build:
@@ -27,7 +28,7 @@ jobs:
       run: |
         pacman -Syu --noconfirm egl-wayland egl-gbm wayland base-devel mesa pango cairo
     - name: Run clippy check
-      run: cargo clippy -- -D warnings
+      run: cargo clippy
     - name: Run fmt check
       run: cargo fmt --all -- --check
     - name: Build
@@ -63,3 +64,28 @@ jobs:
       env:
         CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         CARGO_PUBLISH: true
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    needs: publish-crate
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: taiki-e/create-gh-release-action@c5baa0b5dc700cf06439d87935e130220a6882d9 # v1.9.3
+        with:
+          branch: master
+          changelog: CHANGELOG.md
+          draft: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish github release
+        run: |
+          if [[ $(echo "${GTIHUB_REF#refs/tags/v}" | grep '-' > /dev/null) ]]; then
+            gh release edit "${GITHUB_REF#refs/tags/}" --prerelease
+          fi
+          gh release edit "${GITHUB_REF#refs/tags/}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
