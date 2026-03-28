@@ -101,6 +101,7 @@ impl LayerSurfaceInfo {
         self.wl_surface.commit();
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn redraw(
         &mut self,
         Position {
