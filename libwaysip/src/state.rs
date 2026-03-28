@@ -169,24 +169,24 @@ impl ScreenInfo {
 #[derive(Debug)]
 pub struct WaysipState {
     pub(crate) wloutput_infos: Vec<WlOutputInfo>,
-    pub (crate) running: bool,
-    pub (crate) selection_type: SelectionType,
-    pub (crate) wl_surfaces: Vec<LayerSurfaceInfo>,
-    pub (crate) current_pos: Position<f64>,
-    pub (crate) start_pos: Option<Position<f64>>,
-    pub (crate) end_pos: Option<Position<f64>>,
-    pub (crate) current_screen: usize,
-    pub (crate) cursor_manager: Option<WpCursorShapeManagerV1>,
-    pub (crate) shm: Option<WlShm>,
-    pub (crate) qh: Option<QueueHandle<Self>>,
-    pub (crate) predefined_boxes: Option<Vec<BoxInfo>>,
-    pub (crate) aspect_ratio: Option<(f64, f64)>,
-    pub (crate) last_redraw: std::time::Instant,
+    pub(crate) running: bool,
+    pub(crate) selection_type: SelectionType,
+    pub(crate) wl_surfaces: Vec<LayerSurfaceInfo>,
+    pub(crate) current_pos: Position<f64>,
+    pub(crate) start_pos: Option<Position<f64>>,
+    pub(crate) end_pos: Option<Position<f64>>,
+    pub(crate) current_screen: usize,
+    pub(crate) cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub(crate) shm: Option<WlShm>,
+    pub(crate) qh: Option<QueueHandle<Self>>,
+    pub(crate) predefined_boxes: Option<Vec<BoxInfo>>,
+    pub(crate) aspect_ratio: Option<(f64, f64)>,
+    pub(crate) last_redraw: std::time::Instant,
     /// Tracks actual effective selection type for DimensionsOrOutput mode
     pub(crate) effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
     pub(crate) mouse_press_time: Option<std::time::Instant>,
-    redraw_all: bool
+    redraw_all: bool,
 }
 
 impl WaysipState {
@@ -247,7 +247,11 @@ impl WaysipState {
         self.predefined_boxes = Some(boxes);
     }
 
-    pub(crate) fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
+    pub(crate) fn ensure_buffer(
+        &mut self,
+        surface: &ZwlrLayerSurfaceV1,
+        (width, height): (u32, u32),
+    ) {
         let Some(surface_info) = self
             .wl_surfaces
             .iter_mut()
