@@ -186,6 +186,7 @@ pub struct WaysipState {
     pub effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
     pub mouse_press_time: Option<std::time::Instant>,
+    redraw_all: bool
 }
 
 impl WaysipState {
@@ -207,6 +208,7 @@ impl WaysipState {
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
             effective_selection_type: None,
             mouse_press_time: None,
+            redraw_all: false,
         }
     }
 
@@ -245,7 +247,7 @@ impl WaysipState {
         self.predefined_boxes = Some(boxes);
     }
 
-    pub fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
+    pub(crate) fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
         let Some(surface_info) = self
             .wl_surfaces
             .iter_mut()
@@ -300,6 +302,13 @@ impl WaysipState {
         surface_info.inited = true;
     }
 
+    pub(crate) fn set_start_pos(&mut self, start_pos: Position<f64>) {
+        if self.start_pos.is_none() {
+            self.redraw_all = true;
+        }
+        self.start_pos = Some(start_pos);
+    }
+
     pub fn commit(&self) {
         let qh = self.qh.as_ref().unwrap();
         for (idx, surface) in self.wl_surfaces.iter().enumerate() {
@@ -308,17 +317,16 @@ impl WaysipState {
         }
     }
 
-    pub fn redraw_current_surface(&mut self) {
-        self.redraw(self.current_screen);
-    }
-
-    pub fn redraw_all_surface(&mut self) {
+    /// redraw all surface
+    pub fn redraw(&mut self) {
         for i in 0..self.wl_surfaces.len() {
-            self.redraw(i);
+            self.redraw_surface(i);
         }
+
+        self.redraw_all = false;
     }
 
-    pub fn redraw(&mut self, screen_index: usize) {
+    fn redraw_surface(&mut self, screen_index: usize) {
         if screen_index >= self.wl_surfaces.len() {
             return;
         }
@@ -371,6 +379,7 @@ impl WaysipState {
                 size,
                 draw_text,
                 self.predefined_boxes.as_ref(),
+                self.redraw_all,
             );
         }
     }
@@ -406,6 +415,7 @@ pub struct LayerSurfaceInfo {
     pub buffer: WlBuffer,
     pub cursor_buffer: Option<CursorImageBuffer>,
     pub cairo_t: cairo::Context,
+    #[allow(unused)]
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,
@@ -418,7 +428,7 @@ pub struct LayerSurfaceInfo {
 }
 
 /// coordinates of box
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct BoxInfo {
     pub start_x: f64,
     pub start_y: f64,

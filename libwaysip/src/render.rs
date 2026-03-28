@@ -115,6 +115,7 @@ impl LayerSurfaceInfo {
         Size { width, height }: Size,
         draw_text: bool,
         opt_boxes: Option<&Vec<BoxInfo>>,
+        redraw_all: bool,
     ) {
         let cairoinfo = &self.cairo_t;
 
@@ -179,9 +180,11 @@ impl LayerSurfaceInfo {
         let dw = (cx + cw).ceil() as i32 - dx;
         let dh = (cy + ch).ceil() as i32 - dy;
 
-        cairoinfo.save().unwrap();
-        cairoinfo.rectangle(dx as f64, dy as f64, dw as f64, dh as f64);
-        cairoinfo.clip();
+        if !redraw_all {
+            cairoinfo.save().unwrap();
+            cairoinfo.rectangle(dx as f64, dy as f64, dw as f64, dh as f64);
+            cairoinfo.clip();
+        }
         cairoinfo.set_operator(cairo::Operator::Source);
         cairoinfo.set_source_rgba(
             self.style.background_color.r,
@@ -190,9 +193,12 @@ impl LayerSurfaceInfo {
             self.style.background_color.a,
         );
         cairoinfo.paint().unwrap();
-        cairoinfo.restore().unwrap();
 
-        cairoinfo.set_operator(cairo::Operator::Source);
+        if !redraw_all {
+            cairoinfo.restore().unwrap();
+
+            cairoinfo.set_operator(cairo::Operator::Source);
+        }
 
         if let Some(boxes) = opt_boxes {
             for box_info in boxes {
@@ -269,7 +275,11 @@ impl LayerSurfaceInfo {
         }
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
-        self.wl_surface.damage(dx, dy, dw, dh);
+        if redraw_all {
+            self.wl_surface.damage(0, 0, width, height);
+        } else {
+            self.wl_surface.damage(dx, dy, dw, dh);
+        }
         self.wl_surface.commit();
 
         self.prev_selection = Some(current_sel);

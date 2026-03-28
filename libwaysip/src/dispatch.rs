@@ -225,7 +225,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         }
 
                         if !dispatch_state.is_predefined_boxes() {
-                            dispatch_state.start_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.set_start_pos(dispatch_state.current_pos);
                         }
                         if !dispatch_state.is_area()
                             && !dispatch_state.is_predefined_boxes()
@@ -263,8 +263,9 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                                 // For screen selection, we need to set positions to cover the whole screen
                                 let screen_info = dispatch_state.wloutput_infos
                                     [dispatch_state.current_screen]
-                                    .xdg_output_info();
-                                dispatch_state.start_pos = Some(Position {
+                                    .xdg_output_info()
+                                    .clone();
+                                dispatch_state.set_start_pos(Position {
                                     x: screen_info.start_position.x as f64,
                                     y: screen_info.start_position.y as f64,
                                 });
@@ -393,7 +394,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     let current_pos = dispatch_state.current_pos;
                     if let Some(box_info) = dispatch_state
                         .predefined_boxes
-                        .as_ref()
+                        .clone()
                         .unwrap()
                         .iter()
                         .find(|box_info| {
@@ -404,7 +405,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         })
                     {
                         dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                        dispatch_state.start_pos = Some(Position {
+                        dispatch_state.set_start_pos(Position {
                             x: box_info.start_x,
                             y: box_info.start_y,
                         });
@@ -441,7 +442,7 @@ impl Dispatch<WlCallback, usize> for state::WaysipState {
             if *screen_index != state.current_screen {
                 return;
             }
-            state.redraw_all_surface();
+            state.redraw();
         }
     }
 }
