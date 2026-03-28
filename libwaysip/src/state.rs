@@ -168,24 +168,25 @@ impl ScreenInfo {
 
 #[derive(Debug)]
 pub struct WaysipState {
-    pub wloutput_infos: Vec<WlOutputInfo>,
-    pub running: bool,
-    pub selection_type: SelectionType,
-    pub wl_surfaces: Vec<LayerSurfaceInfo>,
-    pub current_pos: Position<f64>,
-    pub start_pos: Option<Position<f64>>,
-    pub end_pos: Option<Position<f64>>,
-    pub current_screen: usize,
-    pub cursor_manager: Option<WpCursorShapeManagerV1>,
-    pub shm: Option<WlShm>,
-    pub qh: Option<QueueHandle<Self>>,
-    pub predefined_boxes: Option<Vec<BoxInfo>>,
-    pub aspect_ratio: Option<(f64, f64)>,
-    pub last_redraw: std::time::Instant,
+    pub(crate) wloutput_infos: Vec<WlOutputInfo>,
+    pub(crate) running: bool,
+    pub(crate) selection_type: SelectionType,
+    pub(crate) wl_surfaces: Vec<LayerSurfaceInfo>,
+    pub(crate) current_pos: Position<f64>,
+    pub(crate) start_pos: Option<Position<f64>>,
+    pub(crate) end_pos: Option<Position<f64>>,
+    pub(crate) current_screen: usize,
+    pub(crate) cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub(crate) shm: Option<WlShm>,
+    pub(crate) qh: Option<QueueHandle<Self>>,
+    pub(crate) predefined_boxes: Option<Vec<BoxInfo>>,
+    pub(crate) aspect_ratio: Option<(f64, f64)>,
+    pub(crate) last_redraw: std::time::Instant,
     /// Tracks actual effective selection type for DimensionsOrOutput mode
-    pub effective_selection_type: Option<SelectionType>,
+    pub(crate) effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
-    pub mouse_press_time: Option<std::time::Instant>,
+    pub(crate) mouse_press_time: Option<std::time::Instant>,
+    redraw_all: bool,
 }
 
 impl WaysipState {
@@ -207,6 +208,7 @@ impl WaysipState {
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
             effective_selection_type: None,
             mouse_press_time: None,
+            redraw_all: false,
         }
     }
 
@@ -245,7 +247,11 @@ impl WaysipState {
         self.predefined_boxes = Some(boxes);
     }
 
-    pub fn ensure_buffer(&mut self, surface: &ZwlrLayerSurfaceV1, (width, height): (u32, u32)) {
+    pub(crate) fn ensure_buffer(
+        &mut self,
+        surface: &ZwlrLayerSurfaceV1,
+        (width, height): (u32, u32),
+    ) {
         let Some(surface_info) = self
             .wl_surfaces
             .iter_mut()
@@ -265,7 +271,7 @@ impl WaysipState {
             stride,
         } = render::draw_ui(
             &mut file,
-            (width, width),
+            (width, height),
             surface_info.style.background_color,
         );
         let pool = self
@@ -300,6 +306,13 @@ impl WaysipState {
         surface_info.inited = true;
     }
 
+    pub(crate) fn set_start_pos(&mut self, start_pos: Position<f64>) {
+        if self.start_pos.is_none() {
+            self.redraw_all = true;
+        }
+        self.start_pos = Some(start_pos);
+    }
+
     pub fn commit(&self) {
         let qh = self.qh.as_ref().unwrap();
         for (idx, surface) in self.wl_surfaces.iter().enumerate() {
@@ -308,34 +321,27 @@ impl WaysipState {
         }
     }
 
-    pub fn redraw_current_surface(&self) {
-        let surface_info = &self.wl_surfaces[self.current_screen];
-        self.redraw(&surface_info.layer);
-    }
-
-    pub fn redraw_all_surface(&self) {
-        for surface_info in &self.wl_surfaces {
-            self.redraw(&surface_info.layer);
+    /// redraw all surface
+    pub fn redraw(&mut self) {
+        for i in 0..self.wl_surfaces.len() {
+            self.redraw_surface(i);
         }
+
+        self.redraw_all = false;
     }
 
-    pub fn redraw(&self, surface: &ZwlrLayerSurfaceV1) {
-        let Some(screen_index) = self
-            .wl_surfaces
-            .iter()
-            .position(|info| info.layer == *surface)
-        else {
+    fn redraw_surface(&mut self, screen_index: usize) {
+        if screen_index >= self.wl_surfaces.len() {
             return;
-        };
+        }
 
-        let info = &self.wl_surfaces[screen_index];
         let ZXdgOutputInfo {
             size,
             start_position,
             name,
             description,
             ..
-        } = self.wloutput_infos[screen_index].xdg_output_info();
+        } = self.wloutput_infos[screen_index].xdg_output_info().clone();
 
         if self.is_screen()
             || self.is_effective_screen()
@@ -343,40 +349,46 @@ impl WaysipState {
             // else dimension select
             || (self.is_dimensions_or_output() && self.start_pos.is_none())
         {
-            for (idx, info) in self
-                .wl_surfaces
-                .iter()
-                .enumerate()
-                .filter(|(_, i)| i.inited)
-            {
+            let current_screen = self.current_screen;
+            for idx in 0..self.wl_surfaces.len() {
+                if !self.wl_surfaces[idx].inited {
+                    continue;
+                }
                 let ZXdgOutputInfo {
                     size,
                     start_position,
                     ..
-                } = &self.wloutput_infos[idx].xdg_output_info();
-                info.redraw_select_screen(
-                    idx == self.current_screen,
-                    *size,
-                    *start_position,
-                    name,
-                    description,
+                } = self.wloutput_infos[idx].xdg_output_info().clone();
+                self.wl_surfaces[idx].redraw_select_screen(
+                    idx == current_screen,
+                    size,
+                    start_position,
+                    &name,
+                    &description,
                 );
             }
         } else {
             if self.start_pos.is_none() {
                 return;
             }
-            info.redraw(
-                self.start_pos.unwrap(),
-                self.end_pos,
-                *start_position,
-                *size,
-                self.is_area() || self.is_effective_area() || self.is_dimensions_or_output(),
+            let start_pos = self.start_pos.unwrap();
+            let end_pos = self.end_pos.unwrap_or(start_pos);
+            let draw_text =
+                self.is_area() || self.is_effective_area() || self.is_dimensions_or_output();
+
+            self.wl_surfaces[screen_index].redraw(
+                start_pos,
+                end_pos,
+                start_position,
+                size,
+                draw_text,
                 self.predefined_boxes.as_ref(),
+                self.redraw_all,
             );
         }
     }
 
+    /// Get the info of the area [AreaInfo]
     pub fn area_info(&self) -> Option<AreaInfo> {
         if self.start_pos.is_none() || self.end_pos.is_none() {
             return None;
@@ -401,13 +413,14 @@ impl WaysipState {
 }
 
 #[derive(Debug)]
-pub struct LayerSurfaceInfo {
+pub(crate) struct LayerSurfaceInfo {
     pub layer: ZwlrLayerSurfaceV1,
     pub wl_surface: WlSurface,
     pub cursor_surface: WlSurface,
     pub buffer: WlBuffer,
     pub cursor_buffer: Option<CursorImageBuffer>,
     pub cairo_t: cairo::Context,
+    #[allow(unused)]
     pub stride: i32,
     pub inited: bool,
     pub buffer_busy: bool,
@@ -415,10 +428,12 @@ pub struct LayerSurfaceInfo {
     pub pango_layout: std::cell::OnceCell<pango::Layout>,
     pub font_desc_bold: std::cell::OnceCell<pango::FontDescription>,
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
+    pub prev_selection: Option<[f64; 4]>,
+    pub margin: std::cell::OnceCell<(f64, f64)>,
 }
 
 /// coordinates of box
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct BoxInfo {
     pub start_x: f64,
     pub start_y: f64,

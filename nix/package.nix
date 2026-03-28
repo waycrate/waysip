@@ -1,23 +1,25 @@
-{ lib,
+{
+  lib,
   rustPlatform,
   pkg-config,
   glib,
   pango,
   ...
-}: rustPlatform.buildRustPackage rec {
-    pname = "waysip";
-    src = lib.cleanSource ../.;
+}:
+rustPlatform.buildRustPackage rec {
+  pname = "waysip";
+  src = lib.cleanSource ../.;
 
-    version = "${(builtins.fromTOML (builtins.readFile (src + "/Cargo.toml"))).workspace.package.version}-git";
+  version = "${(builtins.fromTOML (builtins.readFile (src + "/Cargo.toml"))).workspace.package.version}-git";
 
-    cargoLock.lockFile = "${src}/Cargo.lock";
+  cargoLock.lockFile = "${src}/Cargo.lock";
 
-    nativeBuildInputs = [
-      pkg-config
-    ];
+  nativeBuildInputs = [
+    pkg-config
+  ];
 
-    buildInputs = [
-      glib
-      pango
-    ];
-  }
+  buildInputs = [
+    glib
+    pango
+  ];
+}
