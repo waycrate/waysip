@@ -168,24 +168,24 @@ impl ScreenInfo {
 
 #[derive(Debug)]
 pub struct WaysipState {
-    pub wloutput_infos: Vec<WlOutputInfo>,
-    pub running: bool,
-    pub selection_type: SelectionType,
-    pub wl_surfaces: Vec<LayerSurfaceInfo>,
-    pub current_pos: Position<f64>,
-    pub start_pos: Option<Position<f64>>,
-    pub end_pos: Option<Position<f64>>,
-    pub current_screen: usize,
-    pub cursor_manager: Option<WpCursorShapeManagerV1>,
-    pub shm: Option<WlShm>,
-    pub qh: Option<QueueHandle<Self>>,
-    pub predefined_boxes: Option<Vec<BoxInfo>>,
-    pub aspect_ratio: Option<(f64, f64)>,
-    pub last_redraw: std::time::Instant,
+    pub(crate) wloutput_infos: Vec<WlOutputInfo>,
+    pub (crate) running: bool,
+    pub (crate) selection_type: SelectionType,
+    pub (crate) wl_surfaces: Vec<LayerSurfaceInfo>,
+    pub (crate) current_pos: Position<f64>,
+    pub (crate) start_pos: Option<Position<f64>>,
+    pub (crate) end_pos: Option<Position<f64>>,
+    pub (crate) current_screen: usize,
+    pub (crate) cursor_manager: Option<WpCursorShapeManagerV1>,
+    pub (crate) shm: Option<WlShm>,
+    pub (crate) qh: Option<QueueHandle<Self>>,
+    pub (crate) predefined_boxes: Option<Vec<BoxInfo>>,
+    pub (crate) aspect_ratio: Option<(f64, f64)>,
+    pub (crate) last_redraw: std::time::Instant,
     /// Tracks actual effective selection type for DimensionsOrOutput mode
-    pub effective_selection_type: Option<SelectionType>,
+    pub(crate) effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
-    pub mouse_press_time: Option<std::time::Instant>,
+    pub(crate) mouse_press_time: Option<std::time::Instant>,
     redraw_all: bool
 }
 
@@ -384,6 +384,7 @@ impl WaysipState {
         }
     }
 
+    /// Get the info of the area [AreaInfo]
     pub fn area_info(&self) -> Option<AreaInfo> {
         if self.start_pos.is_none() || self.end_pos.is_none() {
             return None;
@@ -408,7 +409,7 @@ impl WaysipState {
 }
 
 #[derive(Debug)]
-pub struct LayerSurfaceInfo {
+pub(crate) struct LayerSurfaceInfo {
     pub layer: ZwlrLayerSurfaceV1,
     pub wl_surface: WlSurface,
     pub cursor_surface: WlSurface,
