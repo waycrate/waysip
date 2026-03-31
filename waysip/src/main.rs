@@ -7,7 +7,7 @@ use std::str::FromStr;
 #[command(name = "waysip")]
 #[command(about="Wayland native area picker", long_about = None)]
 #[command(version)]
-struct Args {
+struct Cli {
     /// Set background color.
     #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
     background: Option<String>,
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_writer(std::io::stderr)
         .init();
 
-    let mut args = Args::parse();
+    let mut args = Cli::parse();
 
     let mut run_selection = |sel: SelectionType, boxes: Option<Vec<BoxInfo>>| {
         let mut builder = WaySip::new().with_selection_type(sel);
