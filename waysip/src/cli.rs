@@ -1,63 +1,83 @@
-use clap::Parser;
+use clap::{
+    Parser,
+    builder::{
+        Styles,
+        styling::{AnsiColor, Effects},
+    },
+};
+
+fn get_styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::Yellow.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Blue.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Green.on_default())
+}
 
 #[derive(Parser)]
-#[command(name = "waysip")]
-#[command(about="Wayland native area picker", long_about = None)]
-#[command(version)]
-pub(crate) struct Cli {
+#[command(version, about, styles=get_styles())]
+pub struct Cli {
+    // ─── Colors ───────────────────────────────────────────────────────────────
     /// Set background color.
     #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
-    pub(crate) background: Option<String>,
+    pub background: Option<String>,
 
     /// Set border and text color.
     #[arg(short = 'c', value_name = "#rrggbbaa/rrggbbaa")]
-    pub(crate) border_color: Option<String>,
+    pub border_color: Option<String>,
 
     /// Set selection color.
     #[arg(short = 's', value_name = "#rrggbbaa/rrggbbaa")]
-    pub(crate) selection_color: Option<String>,
+    pub selection_color: Option<String>,
 
     /// Set option box color.
     #[arg(short = 'B', value_name = "#rrggbbaa/rrggbbaa")]
-    pub(crate) box_color: Option<String>,
+    pub box_color: Option<String>,
 
+    // ─── Typography & border ─────────────────────────────────────────────────
     /// Set the font family for the dimensions.
     #[arg(short = 'F', value_name = "string")]
-    pub(crate) font_name: Option<String>,
+    pub font_name: Option<String>,
 
     /// Set font size.
     #[arg(short = 'S', value_name = "integer")]
-    pub(crate) font_size: Option<i32>,
+    pub font_size: Option<i32>,
 
     /// Set border weight.
     #[arg(short = 'w', value_name = "float")]
-    pub(crate) border_weight: Option<String>,
+    pub border_weight: Option<String>,
 
+    // ─── Output format ───────────────────────────────────────────────────────
     /// Set output format.
     #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
-    pub(crate) format: String,
+    pub format: String,
 
+    // ─── Selection mode ──────────────────────────────────────────────────────
     /// Select a single point.
     #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
-    pub(crate) point: bool,
+    pub point: bool,
 
     /// Display dimensions of selection.
     #[arg(short = 'd', conflicts_with_all = ["point", "screen", "boxes"])]
-    pub(crate) dimensions: bool,
+    pub dimensions: bool,
 
     /// Get screen information
     #[arg(short = 'i', conflicts_with_all = ["point", "dimensions", "output", "boxes"])]
-    pub(crate) screen: bool,
+    pub screen: bool,
 
     /// Select a display output.
     #[arg(short = 'o', conflicts_with_all = ["point", "screen", "boxes"])]
-    pub(crate) output: bool,
+    pub output: bool,
 
     /// Restrict selection to predefined boxes.
-    #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
-    pub(crate) boxes: bool,
+    #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output", "screen"])]
+    pub boxes: bool,
 
     /// Force aspect ratio.
-    #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
-    pub(crate) aspect_ratio: Option<String>,
+    #[arg(
+        short = 'a',
+        value_name = "width:height",
+        conflicts_with_all = ["point", "screen", "output", "boxes"]
+    )]
+    pub aspect_ratio: Option<String>,
 }
