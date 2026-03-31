@@ -13,6 +13,12 @@ use utils::apply_format;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = Cli::parse();
 
+    #[cfg(feature = "completions")]
+    if let Some(shell) = args.completions {
+        utils::print_completions(shell);
+        return Ok(());
+    }
+
     #[cfg(feature = "logger")]
     logger::setup(&args);
 

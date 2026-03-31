@@ -1,3 +1,5 @@
+#[cfg(feature = "completions")]
+use clap::ValueEnum;
 #[cfg(feature = "logger")]
 use tracing::Level;
 
@@ -8,6 +10,18 @@ use clap::{
         styling::{AnsiColor, Effects},
     },
 };
+
+/// Shell variants for completion generation.
+#[cfg(feature = "completions")]
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum Shell {
+    Bash,
+    Elvish,
+    Fish,
+    Pwsh,
+    Zsh,
+    Nushell,
+}
 
 fn get_styles() -> Styles {
     Styles::styled()
@@ -20,6 +34,13 @@ fn get_styles() -> Styles {
 #[derive(Parser)]
 #[command(version, about, styles=get_styles())]
 pub struct Cli {
+    // ─── Shell completions ────────────────────────────────────────────────────
+    /// Generate shell completions and print to stdout.
+    /// Example: waysip --completions fish | source
+    #[cfg(feature = "completions")]
+    #[arg(long, value_name = "SHELL", exclusive = true, verbatim_doc_comment)]
+    pub completions: Option<Shell>,
+
     // ─── Colors ───────────────────────────────────────────────────────────────
     /// Set background color.
     #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]

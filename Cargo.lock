@@ -136,6 +136,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19c9f1dde76b736e3681f28cec9d5a61299cbaae0fce80a68e43724ad56031eb"
+dependencies = [
+ "clap",
+]
+
+[[package]]
+name = "clap_complete_nushell"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbb9e9715d29a754b468591be588f6b926f5b0a1eb6a8b62acabeb66ff84d897"
+dependencies = [
+ "clap",
+ "clap_complete",
+]
+
+[[package]]
 name = "clap_derive"
 version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1034,6 +1053,8 @@ name = "waysip"
 version = "0.6.1"
 dependencies = [
  "clap",
+ "clap_complete",
+ "clap_complete_nushell",
  "libwaysip",
  "tracing",
  "tracing-subscriber",
