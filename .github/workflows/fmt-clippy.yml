@@ -3,52 +3,52 @@ name: fmt and clippy
 on: [push, pull_request]
 
 env:
-    CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: always
 
 jobs:
-    fmt:
-        runs-on: ubuntu-latest
-        container:
-            image: archlinux:latest
+  fmt:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-            - uses: dtolnay/rust-toolchain@stable
-              with:
-                  components: rustfmt
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
 
-            - name: Check formatting
-              run: cargo fmt -- --check
+      - name: Check formatting
+        run: cargo fmt -- --check
 
-    clippy:
-        runs-on: ubuntu-latest
-        container:
-            image: archlinux:latest
+  clippy:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
 
-        strategy:
-            matrix:
-                features:
-                    - "--all-features"
-                    - "--no-default-features"
+    strategy:
+      matrix:
+        features:
+          - "--all-features"
+          - "--no-default-features"
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-            - uses: dtolnay/rust-toolchain@stable
-              with:
-                  components: clippy
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
-            - name: Build Cache
-              uses: Swatinem/rust-cache@v2
-              with:
-                  key: ${{ matrix.features }}
+      - name: Build Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.features }}
 
-            - name: Install build dependencies
-              run: |
-                  pacman -Syu --noconfirm base-devel wayland cairo pango
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel wayland cairo pango
 
-            - name: Clippy (${{ matrix.features }})
-              run: cargo clippy ${{ matrix.features }} -- -D warnings
+      - name: Clippy (${{ matrix.features }})
+        run: cargo clippy ${{ matrix.features }} -- -D warnings

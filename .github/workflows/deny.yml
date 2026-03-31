@@ -3,15 +3,15 @@ name: cargo-deny
 on: [push, pull_request]
 
 jobs:
-    deny:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
-            - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-            - name: Install cargo-deny
-              run: cargo install cargo-deny
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
 
-            - name: Run cargo deny
-              run: cargo deny check licenses
+      - name: Run cargo deny
+        run: cargo deny check licenses
