@@ -11,8 +11,18 @@ readme.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["logger", "completions"]
+# Initialises the tracing subscriber and exposes the `--log-level` CLI flag.
+# Disable to suppress all stderr log output entirely.
+logger = ["dep:tracing-subscriber"]
+# Adds `--completions <SHELL>` for generating shell completion scripts.
+completions = ["dep:clap_complete", "dep:clap_complete_nushell"]
+
 [dependencies]
-clap = { version = "4.6.0", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
+clap_complete = { version = "4.6", optional = true }
+clap_complete_nushell = { version = "4.6", optional = true }
 libwaysip.workspace = true
 tracing.workspace = true
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", optional = true }
