@@ -1,69 +1,10 @@
+mod cli;
+
 use clap::Parser;
+use cli::Cli;
 use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
 use std::io::{IsTerminal, Read};
 use std::str::FromStr;
-
-#[derive(Parser)]
-#[command(name = "waysip")]
-#[command(about="Wayland native area picker", long_about = None)]
-#[command(version)]
-struct Cli {
-    /// Set background color.
-    #[arg(short = 'b', value_name = "#rrggbbaa/rrggbbaa")]
-    background: Option<String>,
-
-    /// Set border and text color.
-    #[arg(short = 'c', value_name = "#rrggbbaa/rrggbbaa")]
-    border_color: Option<String>,
-
-    /// Set selection color.
-    #[arg(short = 's', value_name = "#rrggbbaa/rrggbbaa")]
-    selection_color: Option<String>,
-
-    /// Set option box color.
-    #[arg(short = 'B', value_name = "#rrggbbaa/rrggbbaa")]
-    box_color: Option<String>,
-
-    /// Set the font family for the dimensions.
-    #[arg(short = 'F', value_name = "string")]
-    font_name: Option<String>,
-
-    /// Set font size.
-    #[arg(short = 'S', value_name = "integer")]
-    font_size: Option<i32>,
-
-    /// Set border weight.
-    #[arg(short = 'w', value_name = "float")]
-    border_weight: Option<String>,
-
-    /// Set output format.
-    #[arg(short = 'f', value_name = "string", default_value = "%x,%y %wx%h\n")]
-    format: String,
-
-    /// Select a single point.
-    #[arg(short = 'p', conflicts_with_all = ["screen", "dimensions", "output", "boxes"])]
-    point: bool,
-
-    /// Display dimensions of selection.
-    #[arg(short = 'd', conflicts_with_all = ["point", "screen", "boxes"])]
-    dimensions: bool,
-
-    /// Get screen information
-    #[arg(short = 'i', conflicts_with_all = ["point", "dimensions", "output", "boxes"])]
-    screen: bool,
-
-    /// Select a display output.
-    #[arg(short = 'o', conflicts_with_all = ["point", "screen", "boxes"])]
-    output: bool,
-
-    /// Restrict selection to predefined boxes.
-    #[arg(short = 'r', conflicts_with_all = ["point", "dimensions", "output" , "screen"])]
-    boxes: bool,
-
-    /// Force aspect ratio.
-    #[arg(short = 'a', value_name = "width:height", conflicts_with_all = ["point", "screen", "output", "boxes"])]
-    aspect_ratio: Option<String>,
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
