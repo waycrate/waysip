@@ -1,3 +1,6 @@
+#[cfg(feature = "logger")]
+use tracing::Level;
+
 use clap::{
     Parser,
     builder::{
@@ -80,4 +83,10 @@ pub struct Cli {
         conflicts_with_all = ["point", "screen", "output", "boxes"]
     )]
     pub aspect_ratio: Option<String>,
+
+    // ─── Global options ───────────────────────────────────────────────────────
+    /// Log level written to stderr.
+    #[cfg(feature = "logger")]
+    #[arg(long)]
+    pub log_level: Option<Level>,
 }

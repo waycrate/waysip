@@ -1,18 +1,17 @@
 mod cli;
+#[cfg(feature = "logger")]
+mod logger;
 
 use clap::Parser;
 use cli::Cli;
 use libwaysip::{AreaInfo, BoxInfo, Color, Position, SelectionType, Size, WaySip};
 use std::io::{IsTerminal, Read};
-use std::str::FromStr;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::from_str("trace")?)
-        .with_writer(std::io::stderr)
-        .init();
-
     let mut args = Cli::parse();
+
+    #[cfg(feature = "logger")]
+    logger::setup(&args);
 
     let mut run_selection = |sel: SelectionType, boxes: Option<Vec<BoxInfo>>| {
         let mut builder = WaySip::new().with_selection_type(sel);
