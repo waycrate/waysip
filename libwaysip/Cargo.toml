@@ -10,23 +10,23 @@ keywords.workspace = true
 readme.workspace = true
 
 [dependencies]
-tempfile = "3.27.0"
-wayland-client = "0.31.13"
-wayland-cursor = "0.31.13"
+tempfile = "3.27"
+wayland-client = "0.31"
+wayland-cursor = "0.31"
 
-wayland-protocols = { version = "0.32.11", default-features = false, features = [
+wayland-protocols = { version = "0.32", default-features = false, features = [
 	"unstable",
 	"staging",
 	"client",
 ] }
 
-wayland-protocols-wlr = { version = "0.3.11", default-features = false, features = [
+wayland-protocols-wlr = { version = "0.3", default-features = false, features = [
 	"client",
 ] }
 
-cairo-rs = "0.22.0"
-pango = "0.22.0"
-pangocairo = "0.22.0"
+cairo-rs = "0.22"
+pango = "0.22"
+pangocairo = "0.22"
 
-memmap2 = "0.9.10"
-thiserror = "2.0.18"
+memmap2 = "0.9"
+thiserror = "2.0"
