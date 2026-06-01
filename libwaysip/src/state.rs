@@ -184,13 +184,7 @@ pub struct WaysipState {
     #[cfg(feature = "frame-limit")]
     pub(crate) last_redraw: std::time::Instant,
     #[cfg(feature = "benchmark")]
-    pub(crate) bench_fn: bool,
-    #[cfg(feature = "benchmark")]
-    pub(crate) bench_total: bool,
-    #[cfg(feature = "benchmark")]
-    pub(crate) bench_start: std::time::Instant,
-    #[cfg(feature = "benchmark")]
-    pub(crate) timestamps_fn: Vec<u32>,
+    pub(crate) bench: bool,
     #[cfg(feature = "benchmark")]
     pub(crate) timestamps_total: Vec<u32>,
     /// Tracks actual effective selection type for DimensionsOrOutput mode
@@ -219,13 +213,7 @@ impl WaysipState {
             #[cfg(feature = "frame-limit")]
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
             #[cfg(feature = "benchmark")]
-            bench_fn: false,
-            #[cfg(feature = "benchmark")]
-            bench_total: false,
-            #[cfg(feature = "benchmark")]
-            bench_start: std::time::Instant::now(),
-            #[cfg(feature = "benchmark")]
-            timestamps_fn: Vec::new(),
+            bench: false,
             #[cfg(feature = "benchmark")]
             timestamps_total: Vec::new(),
             effective_selection_type: None,
@@ -362,12 +350,6 @@ impl WaysipState {
         }
     }
 
-    #[cfg(feature = "benchmark")]
-    pub(crate) fn record_frame(&mut self) {
-        self.timestamps_fn
-            .push(self.bench_start.elapsed().as_millis() as u32);
-    }
-
     /// redraw all surface
     pub fn redraw(&mut self) {
         for i in 0..self.wl_surfaces.len() {
@@ -456,8 +438,6 @@ impl WaysipState {
             screen_info: output.get_screen_info(),
             effective_selection_type: self.effective_selection_type,
             #[cfg(feature = "benchmark")]
-            timestamps_fn: self.timestamps_fn.clone(),
-            #[cfg(feature = "benchmark")]
             timestamps_total: self.timestamps_total.clone(),
         })
     }
@@ -530,8 +510,6 @@ pub struct AreaInfo {
     pub box_info: BoxInfo,
     pub screen_info: ScreenInfo,
     pub effective_selection_type: Option<SelectionType>,
-    #[cfg(feature = "benchmark")]
-    pub timestamps_fn: Vec<u32>,
     #[cfg(feature = "benchmark")]
     pub timestamps_total: Vec<u32>,
 }

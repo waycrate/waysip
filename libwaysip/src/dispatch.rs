@@ -225,12 +225,11 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         }
 
                         #[cfg(feature = "benchmark")]
-                        if dispatch_state.bench_fn
+                        if dispatch_state.bench
                             && (dispatch_state.is_area()
                                 || dispatch_state.is_dimensions_or_output())
                         {
-                            dispatch_state.bench_start = std::time::Instant::now();
-                            dispatch_state.timestamps_fn.clear();
+                            dispatch_state.timestamps_total.clear();
                         }
 
                         if !dispatch_state.is_predefined_boxes() {
@@ -440,8 +439,9 @@ impl Dispatch<WlCallback, usize> for state::WaysipState {
             if *screen_index != state.current_screen {
                 return;
             }
+
             #[cfg(feature = "benchmark")]
-            if state.bench_total {
+            if state.bench && state.timestamps_total.last().copied() != Some(_callback_data) {
                 state.timestamps_total.push(_callback_data);
             }
             state.redraw();

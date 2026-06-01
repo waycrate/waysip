@@ -46,9 +46,7 @@ pub struct WaySip {
     predefined_boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")]
-    bench_fn: bool,
-    #[cfg(feature = "benchmark")]
-    bench_total: bool,
+    bench: bool,
 }
 
 impl WaySip {
@@ -108,21 +106,15 @@ impl WaySip {
     }
 
     #[cfg(feature = "benchmark")]
-    pub fn with_bench_fn(mut self) -> Self {
-        self.bench_fn = true;
-        self
-    }
-
-    #[cfg(feature = "benchmark")]
-    pub fn with_bench_total(mut self) -> Self {
-        self.bench_total = true;
+    pub fn with_bench(mut self) -> Self {
+        self.bench = true;
         self
     }
 
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         #[cfg(feature = "benchmark")]
-        let (bench_fn, bench_total) = (self.bench_fn, self.bench_total);
+        let bench = self.bench;
 
         match self.conn {
             Some(connection) => get_area_inner(
@@ -132,9 +124,7 @@ impl WaySip {
                 self.predefined_boxes,
                 self.aspect_ratio,
                 #[cfg(feature = "benchmark")]
-                bench_fn,
-                #[cfg(feature = "benchmark")]
-                bench_total,
+                bench,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -147,9 +137,7 @@ impl WaySip {
                     self.predefined_boxes,
                     self.aspect_ratio,
                     #[cfg(feature = "benchmark")]
-                    bench_fn,
-                    #[cfg(feature = "benchmark")]
-                    bench_total,
+                    bench,
                 )
             }
         }
@@ -162,8 +150,7 @@ fn get_area_inner(
     style: Style,
     boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
-    #[cfg(feature = "benchmark")] bench_fn: bool,
-    #[cfg(feature = "benchmark")] bench_total: bool,
+    #[cfg(feature = "benchmark")] bench: bool,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -296,31 +283,9 @@ fn get_area_inner(
 
     #[cfg(feature = "benchmark")]
     {
-        state.bench_fn = bench_fn;
-        state.bench_total = bench_total;
+        state.bench = bench;
     }
 
-    #[cfg(feature = "benchmark")]
-    if state.bench_fn {
-        let mut did_commit = false;
-        while state.running {
-            event_queue
-                .blocking_dispatch(&mut state)
-                .map_err(WaySipError::DispatchError)?;
-            let needs_drag = state.is_area() || state.is_dimensions_or_output();
-            if did_commit && (!needs_drag || state.start_pos.is_some()) {
-                state.record_frame();
-            }
-            did_commit = state.try_commit();
-        }
-    } else {
-        while state.running {
-            event_queue
-                .blocking_dispatch(&mut state)
-                .map_err(WaySipError::DispatchError)?;
-        }
-    }
-    #[cfg(not(feature = "benchmark"))]
     while state.running {
         event_queue
             .blocking_dispatch(&mut state)

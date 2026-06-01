@@ -111,12 +111,8 @@ pub(crate) fn run_selection(
     }
 
     #[cfg(feature = "benchmark")]
-    if args.bench_fn {
-        builder = builder.with_bench_fn();
-    }
-    #[cfg(feature = "benchmark")]
-    if args.bench_total {
-        builder = builder.with_bench_total();
+    if args.bench {
+        builder = builder.with_bench();
     }
 
     match builder.get() {
