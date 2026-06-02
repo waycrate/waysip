@@ -181,7 +181,12 @@ pub struct WaysipState {
     pub(crate) qh: Option<QueueHandle<Self>>,
     pub(crate) predefined_boxes: Option<Vec<BoxInfo>>,
     pub(crate) aspect_ratio: Option<(f64, f64)>,
+    #[cfg(feature = "frame-limit")]
     pub(crate) last_redraw: std::time::Instant,
+    #[cfg(feature = "benchmark")]
+    pub(crate) bench: bool,
+    #[cfg(feature = "benchmark")]
+    pub(crate) timestamps_total: Vec<u32>,
     /// Tracks actual effective selection type for DimensionsOrOutput mode
     pub(crate) effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
@@ -205,7 +210,12 @@ impl WaysipState {
             shm: None,
             predefined_boxes: None,
             aspect_ratio: None,
+            #[cfg(feature = "frame-limit")]
             last_redraw: std::time::Instant::now() - std::time::Duration::from_secs(1),
+            #[cfg(feature = "benchmark")]
+            bench: false,
+            #[cfg(feature = "benchmark")]
+            timestamps_total: Vec::new(),
             effective_selection_type: None,
             mouse_press_time: None,
             redraw_all: false,
@@ -321,6 +331,25 @@ impl WaysipState {
         }
     }
 
+    pub(crate) fn try_commit(&mut self) -> bool {
+        #[cfg(feature = "frame-limit")]
+        {
+            let now = std::time::Instant::now();
+            if now.duration_since(self.last_redraw) >= std::time::Duration::from_millis(8) {
+                self.commit();
+                self.last_redraw = now;
+                return true;
+            }
+            false
+        }
+
+        #[cfg(not(feature = "frame-limit"))]
+        {
+            self.commit();
+            true
+        }
+    }
+
     /// redraw all surface
     pub fn redraw(&mut self) {
         for i in 0..self.wl_surfaces.len() {
@@ -408,6 +437,8 @@ impl WaysipState {
             },
             screen_info: output.get_screen_info(),
             effective_selection_type: self.effective_selection_type,
+            #[cfg(feature = "benchmark")]
+            timestamps_total: self.timestamps_total.clone(),
         })
     }
 }
@@ -479,6 +510,8 @@ pub struct AreaInfo {
     pub box_info: BoxInfo,
     pub screen_info: ScreenInfo,
     pub effective_selection_type: Option<SelectionType>,
+    #[cfg(feature = "benchmark")]
+    pub timestamps_total: Vec<u32>,
 }
 
 impl AreaInfo {

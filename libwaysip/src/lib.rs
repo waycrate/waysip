@@ -45,6 +45,8 @@ pub struct WaySip {
     style: Style,
     predefined_boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
+    #[cfg(feature = "benchmark")]
+    bench: bool,
 }
 
 impl WaySip {
@@ -103,8 +105,17 @@ impl WaySip {
         self
     }
 
+    #[cfg(feature = "benchmark")]
+    pub fn with_bench(mut self) -> Self {
+        self.bench = true;
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
+        #[cfg(feature = "benchmark")]
+        let bench = self.bench;
+
         match self.conn {
             Some(connection) => get_area_inner(
                 &connection,
@@ -112,6 +123,8 @@ impl WaySip {
                 self.style,
                 self.predefined_boxes,
                 self.aspect_ratio,
+                #[cfg(feature = "benchmark")]
+                bench,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -123,6 +136,8 @@ impl WaySip {
                     self.style,
                     self.predefined_boxes,
                     self.aspect_ratio,
+                    #[cfg(feature = "benchmark")]
+                    bench,
                 )
             }
         }
@@ -135,6 +150,7 @@ fn get_area_inner(
     style: Style,
     boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
+    #[cfg(feature = "benchmark")] bench: bool,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -263,8 +279,13 @@ fn get_area_inner(
         });
     }
     state.shm = Some(shm);
-
     state.qh = Some(qh);
+
+    #[cfg(feature = "benchmark")]
+    {
+        state.bench = bench;
+    }
+
     while state.running {
         event_queue
             .blocking_dispatch(&mut state)

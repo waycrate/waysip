@@ -71,18 +71,21 @@ waysip --completions nushell | save -f ~/.config/nushell/completions/waysip.nu
 
 # Optional features
 
-All features are enabled in the default build. To reduce binary size or compile-time dependencies, features can be selectively disabled:
+All features except `benchmark` are enabled in the default build. To reduce binary size or compile-time dependencies, features can be selectively disabled:
 
 ```bash
+cargo build --no-default-features --features frame-limiter
 cargo build --no-default-features --features logger
 cargo build --no-default-features --features completions
-cargo build --no-default-features --features logger,completions
+cargo build --no-default-features --features frame-limit,logger,completions
 ```
 
 | Feature       | What it adds                                               | Extra dependency          |
 | ------------- | ---------------------------------------------------------- | ------------------------- |
+| `frame-limit` | Workaround to fix frametime issue on low frequency CPUs    | None                      |
 | `logger`      | `--log-level` flag, tracing output to stderr               | tracing-subscriber        |
 | `completions` | `--completions <SHELL>`, generate shell completion scripts | clap_complete (+ nushell) |
+| `benchmark`   | Benchmarking options for development described [here](#development-benchmarking)| None |
 
 # Installation
 
@@ -115,6 +118,33 @@ nix build github:waycrate/waysip
 ```bash
 nix run github:waycrate/waysip
 ```
+
+# Development benchmarking
+
+To enable benchmarking options use one of those options depending on usecase described later:
+```bash
+cargo build --no-default-features --features "logger completions benchmark"
+cargo build --no-default-features --features "logger completions frame-limit benchmark"
+```
+
+Regarding `frame-limit` feature. It is a workaround enabled by default meant to solve issue with unstable frametime on low freq CPUs or under heavy load.
+
+## Benchmark usage
+
+### `--bench`
+
+Records each `wl_callback.done` timestamp from the compositor for the focused screen (duplicate timestamps are dropped, so it's roughly one entry per frame) and prints frame stats on stderr when the selection ends.
+
+Reported metrics (written to stderr):
+- `fps avg`
+- `frametime: min / avg / max`
+- `latencies` - array of entries meant track where frametime issues happened
+
+For drag modes the `raw duration` and the amount trimmed from each end are also printed.
+For non-drag options less frames-better.
+
+To test frametime stability try lowering your cpu freq to 0.8 GHz and build without frame-limit feature before testing.
+
 
 # Support:
 

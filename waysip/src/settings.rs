@@ -110,6 +110,11 @@ pub(crate) fn run_selection(
         builder = builder.with_aspect_ratio(width, height);
     }
 
+    #[cfg(feature = "benchmark")]
+    if args.bench {
+        builder = builder.with_bench();
+    }
+
     match builder.get() {
         Ok(Some(info)) => info,
         Ok(None) => {

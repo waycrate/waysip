@@ -110,4 +110,9 @@ pub struct Cli {
     #[cfg(feature = "logger")]
     #[arg(long)]
     pub log_level: Option<Level>,
+
+    /// Count frames for regular render.
+    #[cfg(feature = "benchmark")]
+    #[arg(long)]
+    pub bench: bool,
 }
