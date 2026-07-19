@@ -19,7 +19,7 @@ freeze = ["dep:libwayshot", "dep:image"]
 tempfile = "3.27"
 wayland-client = "0.31"
 wayland-cursor = "0.31"
-libwayshot = { version = "0.8", optional = true }
+libwayshot = { version = "0.8", optional = true, default-features = false }
 image = { version = "0.25", optional = true, default-features = false }
 
 wayland-protocols = { version = "0.32", default-features = false, features = [
