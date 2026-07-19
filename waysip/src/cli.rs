@@ -115,4 +115,9 @@ pub struct Cli {
     #[cfg(feature = "benchmark")]
     #[arg(long)]
     pub bench: bool,
+
+    /// Freeze the screen (via a screenshot) while selecting.
+    #[cfg(feature = "freeze")]
+    #[arg(long)]
+    pub freeze: bool,
 }

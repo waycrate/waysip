@@ -115,6 +115,11 @@ pub(crate) fn run_selection(
         builder = builder.with_bench();
     }
 
+    #[cfg(feature = "freeze")]
+    if args.freeze {
+        builder = builder.with_freeze();
+    }
+
     match builder.get() {
         Ok(Some(info)) => info,
         Ok(None) => {

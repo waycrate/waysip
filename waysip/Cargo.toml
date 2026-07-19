@@ -20,6 +20,7 @@ logger = ["dep:tracing-subscriber"]
 completions = ["dep:clap_complete", "dep:clap_complete_nushell"]
 frame-limit = ["libwaysip/frame-limit"]
 benchmark = ["libwaysip/benchmark"]
+freeze = ["libwaysip/freeze"]
 
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }
