@@ -34,7 +34,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          pacman -Syu --noconfirm base-devel wayland cairo pango
+          pacman -Syu --noconfirm base-devel wayland cairo pango libdrm mesa
 
       - name: Build (${{ matrix.name }})
         run: cargo build ${{ matrix.cargo_args }}
