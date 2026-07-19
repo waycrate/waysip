@@ -69,23 +69,31 @@ waysip --completions pwsh >> $PROFILE
 waysip --completions nushell | save -f ~/.config/nushell/completions/waysip.nu
 ```
 
+Freeze the screen while selecting, so the visible desktop stays static instead of updating live (requires the optional `freeze` feature, see below):
+
+```bash
+waysip --freeze -d
+```
+
 # Optional features
 
-All features except `benchmark` are enabled in the default build. To reduce binary size or compile-time dependencies, features can be selectively disabled:
+All features except `benchmark` and `freeze` are enabled in the default build. To reduce binary size or compile-time dependencies, features can be selectively disabled, or `freeze` can be opted into:
 
 ```bash
 cargo build --no-default-features --features frame-limiter
 cargo build --no-default-features --features logger
 cargo build --no-default-features --features completions
 cargo build --no-default-features --features frame-limit,logger,completions
+cargo build --features freeze
 ```
 
-| Feature       | What it adds                                               | Extra dependency          |
-| ------------- | ---------------------------------------------------------- | ------------------------- |
-| `frame-limit` | Workaround to fix frametime issue on low frequency CPUs    | None                      |
-| `logger`      | `--log-level` flag, tracing output to stderr               | tracing-subscriber        |
-| `completions` | `--completions <SHELL>`, generate shell completion scripts | clap_complete (+ nushell) |
-| `benchmark`   | Benchmarking options for development described [here](#development-benchmarking)| None |
+| Feature       | What it adds                                                                     | Extra dependency          |
+| ------------- | -------------------------------------------------------------------------------- | ------------------------- |
+| `frame-limit` | Workaround to fix frametime issue on low frequency CPUs                          | None                      |
+| `logger`      | `--log-level` flag, tracing output to stderr                                     | tracing-subscriber        |
+| `completions` | `--completions <SHELL>`, generate shell completion scripts                       | clap_complete (+ nushell) |
+| `benchmark`   | Benchmarking options for development described [here](#development-benchmarking) | None                      |
+| `freeze`      | `--freeze`, freeze the screen while selecting                                    | libwayshot, image         |
 
 # Installation
 
@@ -122,6 +130,7 @@ nix run github:waycrate/waysip
 # Development benchmarking
 
 To enable benchmarking options use one of those options depending on usecase described later:
+
 ```bash
 cargo build --no-default-features --features "logger completions benchmark"
 cargo build --no-default-features --features "logger completions frame-limit benchmark"
@@ -136,6 +145,7 @@ Regarding `frame-limit` feature. It is a workaround enabled by default meant to 
 Records each `wl_callback.done` timestamp from the compositor for the focused screen (duplicate timestamps are dropped, so it's roughly one entry per frame) and prints frame stats on stderr when the selection ends.
 
 Reported metrics (written to stderr):
+
 - `fps avg`
 - `frametime: min / avg / max`
 - `latencies` - array of entries meant track where frametime issues happened
@@ -144,7 +154,6 @@ For drag modes the `raw duration` and the amount trimmed from each end are also 
 For non-drag options less frames-better.
 
 To test frametime stability try lowering your cpu freq to 0.8 GHz and build without frame-limit feature before testing.
-
 
 # Support:
 
