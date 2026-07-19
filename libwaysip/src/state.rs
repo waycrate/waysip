@@ -283,6 +283,7 @@ impl WaysipState {
             &mut file,
             (width, height),
             surface_info.style.background_color,
+            surface_info.frozen_bg.as_ref(),
         );
         let pool = self
             .shm
@@ -461,6 +462,7 @@ pub(crate) struct LayerSurfaceInfo {
     pub font_desc_normal: std::cell::OnceCell<pango::FontDescription>,
     pub prev_selection: Option<[f64; 4]>,
     pub margin: std::cell::OnceCell<(f64, f64)>,
+    pub frozen_bg: Option<cairo::ImageSurface>,
 }
 
 /// coordinates of box

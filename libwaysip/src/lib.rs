@@ -47,6 +47,8 @@ pub struct WaySip {
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")]
     bench: bool,
+    #[cfg(feature = "freeze")]
+    freeze: bool,
 }
 
 impl WaySip {
@@ -111,10 +113,19 @@ impl WaySip {
         self
     }
 
+    /// Freeze the screen so the visible desktop stays static while selecting.
+    #[cfg(feature = "freeze")]
+    pub fn with_freeze(mut self) -> Self {
+        self.freeze = true;
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         #[cfg(feature = "benchmark")]
         let bench = self.bench;
+        #[cfg(feature = "freeze")]
+        let freeze = self.freeze;
 
         match self.conn {
             Some(connection) => get_area_inner(
@@ -125,6 +136,8 @@ impl WaySip {
                 self.aspect_ratio,
                 #[cfg(feature = "benchmark")]
                 bench,
+                #[cfg(feature = "freeze")]
+                freeze,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -138,6 +151,8 @@ impl WaySip {
                     self.aspect_ratio,
                     #[cfg(feature = "benchmark")]
                     bench,
+                    #[cfg(feature = "freeze")]
+                    freeze,
                 )
             }
         }
@@ -151,6 +166,7 @@ fn get_area_inner(
     boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")] bench: bool,
+    #[cfg(feature = "freeze")] freeze: bool,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -214,6 +230,15 @@ fn get_area_inner(
     // you will find you get the outputs, but if you do not
     // do the step before, you get empty list
 
+    #[cfg(feature = "freeze")]
+    let frozen_backgrounds = if freeze {
+        capture_frozen_backgrounds(connection, &state.wloutput_infos)?
+    } else {
+        Vec::new()
+    };
+    #[cfg(feature = "freeze")]
+    let mut frozen_backgrounds = frozen_backgrounds.into_iter();
+
     let layer_shell = globals
         .bind::<ZwlrLayerShellV1, _, _>(&qh, 3..=4, ())
         .map_err(WaySipError::NotSupportedProtocol)?;
@@ -249,11 +274,21 @@ fn get_area_inner(
         // and if you need to reconfigure it, you need to commit the wl_surface again
         // so because this is just an example, so we just commit it once
         // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
+        #[cfg(feature = "freeze")]
+        let frozen_bg = frozen_backgrounds.next().flatten();
+        #[cfg(not(feature = "freeze"))]
+        let frozen_bg: Option<cairo::ImageSurface> = None;
+
         let mut file = tempfile::tempfile().unwrap();
         let UiInit {
             context: cairo_t,
             stride,
-        } = render::draw_ui(&mut file, (init_w, init_h), style.background_color);
+        } = render::draw_ui(
+            &mut file,
+            (init_w, init_h),
+            style.background_color,
+            frozen_bg.as_ref(),
+        );
         let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());
 
         let buffer =
@@ -276,6 +311,7 @@ fn get_area_inner(
             font_desc_normal: std::cell::OnceCell::new(),
             prev_selection: None,
             margin: std::cell::OnceCell::new(),
+            frozen_bg,
         });
     }
     state.shm = Some(shm);
@@ -301,4 +337,68 @@ fn get_area_inner(
     }
     state.wl_surfaces.clear();
     Ok(state.area_info())
+}
+
+/// Takes a screenshot of every output before the selection UI is shown, so
+/// the visible desktop can be kept static ("frozen") while the user selects.
+#[cfg(feature = "freeze")]
+fn capture_frozen_backgrounds(
+    connection: &Connection,
+    outputs: &[state::WlOutputInfo],
+) -> Result<Vec<Option<cairo::ImageSurface>>, WaySipError> {
+    let wayshot_conn =
+        libwayshot::WayshotConnection::from_connection(connection.clone()).map_err(|e| {
+            WaySipError::InitFailed(format!("Failed to initialize screenshot backend: {e}"))
+        })?;
+    let available = wayshot_conn.get_all_outputs();
+
+    Ok(outputs
+        .iter()
+        .map(|wloutput| -> Option<cairo::ImageSurface> {
+            let output_info = available
+                .iter()
+                .find(|info| info.name == wloutput.get_name())?;
+            let image = wayshot_conn
+                .screenshot_single_output(output_info, false)
+                .ok()?;
+            image_to_argb_surface(image)
+        })
+        .collect())
+}
+
+/// Converts an [`image::DynamicImage`] into a premultiplied-alpha
+/// `cairo::ImageSurface` (`ARgb32`) suitable for use as a paint source.
+#[cfg(feature = "freeze")]
+fn image_to_argb_surface(image: image::DynamicImage) -> Option<cairo::ImageSurface> {
+    let rgba = image.to_rgba8();
+    let width = rgba.width() as i32;
+    let height = rgba.height() as i32;
+    if width == 0 || height == 0 {
+        return None;
+    }
+
+    let stride = cairo::Format::ARgb32.stride_for_width(width as u32).ok()?;
+    let src = rgba.as_raw();
+    let mut data = vec![0u8; stride as usize * height as usize];
+
+    for y in 0..height as usize {
+        let row = y * stride as usize;
+        for x in 0..width as usize {
+            let si = (y * width as usize + x) * 4;
+            let r = src[si] as u32;
+            let g = src[si + 1] as u32;
+            let b = src[si + 2] as u32;
+            let a = src[si + 3] as u32;
+            // cairo's ARgb32 stores premultiplied-alpha pixels.
+            let pr = r * a / 255;
+            let pg = g * a / 255;
+            let pb = b * a / 255;
+            let pixel = (a << 24) | (pr << 16) | (pg << 8) | pb;
+
+            let di = row + x * 4;
+            data[di..di + 4].copy_from_slice(&pixel.to_ne_bytes());
+        }
+    }
+
+    cairo::ImageSurface::create_for_data(data, cairo::Format::ARgb32, width, height, stride).ok()
 }
