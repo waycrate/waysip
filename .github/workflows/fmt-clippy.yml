@@ -47,6 +47,8 @@ jobs:
           key: ${{ matrix.features }}
 
       - name: Install build dependencies
+        # TODO: rm `libdrm` and `mesa` post `libwayshot` 0.8.0 release
+        # see: https://github.com/waycrate/wayshot/pull/395
         run: |
           pacman -Syu --noconfirm base-devel wayland cairo pango libdrm mesa
 
