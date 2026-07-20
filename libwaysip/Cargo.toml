@@ -16,7 +16,7 @@ benchmark = []
 
 [dependencies]
 tempfile = "3.27"
-wayland-client = "0.31"
+wayland-client.workspace = true
 wayland-cursor = "0.31"
 
 wayland-protocols = { version = "0.32", default-features = false, features = [
@@ -29,7 +29,7 @@ wayland-protocols-wlr = { version = "0.3", default-features = false, features = 
 	"client",
 ] }
 
-cairo-rs = "0.22"
+cairo-rs.workspace = true
 pango = "0.22"
 pangocairo = "0.22"
 

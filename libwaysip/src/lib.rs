@@ -9,12 +9,14 @@ pub use utils::*;
 use error::WaySipError;
 use render::UiInit;
 pub use state::{AreaInfo, BoxInfo, SelectionType};
+use std::fmt;
 use std::os::unix::prelude::AsFd;
 use wayland_client::{
     Connection,
     globals::registry_queue_init,
     protocol::{
         wl_compositor::WlCompositor,
+        wl_output::WlOutput,
         wl_seat::WlSeat,
         wl_shm::{self, WlShm},
     },
@@ -29,6 +31,13 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{self, Anchor},
 };
 
+/// A callback invoked once per output right before its selection overlay is
+/// shown, letting the caller supply an image to use
+/// as that output's static backdrop, keeping the visible desktop "frozen"
+/// while selecting. Receives the output's `WlOutput` and its name (e.g.
+/// `"DP-1"`), and returns `None` to fall back to the normal live overlay.
+pub type BackgroundProvider = Box<dyn Fn(&WlOutput, &str) -> Option<cairo::ImageSurface>>;
+
 fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImageBuffer> {
     let mut cursor_theme = CursorTheme::load(connection, shm.clone(), 23).ok()?;
     let mut cursor = cursor_theme.get_cursor("crosshair");
@@ -38,7 +47,7 @@ fn get_cursor_buffer(connection: &Connection, shm: &WlShm) -> Option<CursorImage
     Some(cursor?[0].clone())
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct WaySip {
     conn: Option<Connection>,
     selection_type: SelectionType,
@@ -47,6 +56,24 @@ pub struct WaySip {
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")]
     bench: bool,
+    background_provider: Option<BackgroundProvider>,
+}
+
+impl fmt::Debug for WaySip {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut debug = f.debug_struct("WaySip");
+        debug
+            .field("conn", &self.conn)
+            .field("selection_type", &self.selection_type)
+            .field("style", &self.style)
+            .field("predefined_boxes", &self.predefined_boxes)
+            .field("aspect_ratio", &self.aspect_ratio);
+        #[cfg(feature = "benchmark")]
+        debug.field("bench", &self.bench);
+        debug
+            .field("background_provider", &self.background_provider.is_some())
+            .finish()
+    }
 }
 
 impl WaySip {
@@ -111,6 +138,20 @@ impl WaySip {
         self
     }
 
+    /// Supply a per-output background image to use as
+    /// the static backdrop for the selection overlay, instead of the normal
+    /// live desktop, keeping the screen "frozen" while selecting.
+    ///
+    /// The provider is called once per output; returning `None` for a given
+    /// output falls back to the regular (live) overlay for it.
+    pub fn with_background_provider<F>(mut self, provider: F) -> Self
+    where
+        F: Fn(&WlOutput, &str) -> Option<cairo::ImageSurface> + 'static,
+    {
+        self.background_provider = Some(Box::new(provider));
+        self
+    }
+
     /// get the selected area
     pub fn get(self) -> Result<Option<state::AreaInfo>, WaySipError> {
         #[cfg(feature = "benchmark")]
@@ -125,6 +166,7 @@ impl WaySip {
                 self.aspect_ratio,
                 #[cfg(feature = "benchmark")]
                 bench,
+                self.background_provider,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -138,6 +180,7 @@ impl WaySip {
                     self.aspect_ratio,
                     #[cfg(feature = "benchmark")]
                     bench,
+                    self.background_provider,
                 )
             }
         }
@@ -151,6 +194,7 @@ fn get_area_inner(
     boxes: Option<Vec<state::BoxInfo>>,
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")] bench: bool,
+    background_provider: Option<BackgroundProvider>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
@@ -249,11 +293,20 @@ fn get_area_inner(
         // and if you need to reconfigure it, you need to commit the wl_surface again
         // so because this is just an example, so we just commit it once
         // like if you want to reset anchor or KeyboardInteractivity or resize, commit is needed
+        let frozen_bg = background_provider
+            .as_ref()
+            .and_then(|provider| provider(wloutput.get_output(), wloutput.get_name()));
+
         let mut file = tempfile::tempfile().unwrap();
         let UiInit {
             context: cairo_t,
             stride,
-        } = render::draw_ui(&mut file, (init_w, init_h), style.background_color);
+        } = render::draw_ui(
+            &mut file,
+            (init_w, init_h),
+            style.background_color,
+            frozen_bg.as_ref(),
+        );
         let pool = shm.create_pool(file.as_fd(), init_w * init_h * 4, &qh, ());
 
         let buffer =
@@ -276,6 +329,7 @@ fn get_area_inner(
             font_desc_normal: std::cell::OnceCell::new(),
             prev_selection: None,
             margin: std::cell::OnceCell::new(),
+            frozen_bg,
         });
     }
     state.shm = Some(shm);

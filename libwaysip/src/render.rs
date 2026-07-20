@@ -22,15 +22,15 @@ impl LayerSurfaceInfo {
         description: &str,
     ) {
         let cairoinfo = &self.cairo_t;
-        cairoinfo.set_operator(cairo::Operator::Source);
+        let frozen = self.frozen_bg.as_ref();
         if is_selected {
-            cairoinfo.set_source_rgba(
-                self.style.foreground_color.r,
-                self.style.foreground_color.g,
-                self.style.foreground_color.b,
-                self.style.foreground_color.a,
+            paint_background(
+                cairoinfo,
+                frozen,
+                self.style.foreground_color,
+                width,
+                height,
             );
-            cairoinfo.paint().unwrap();
 
             cairoinfo.set_source_rgba(
                 self.style.border_text_color.r,
@@ -87,13 +87,13 @@ impl LayerSurfaceInfo {
             cairoinfo.restore().unwrap();
             cairoinfo.set_operator(cairo::Operator::Over);
         } else {
-            cairoinfo.set_source_rgba(
-                self.style.background_color.r,
-                self.style.background_color.g,
-                self.style.background_color.b,
-                self.style.background_color.a,
+            paint_background(
+                cairoinfo,
+                frozen,
+                self.style.background_color,
+                width,
+                height,
             );
-            cairoinfo.paint().unwrap();
         }
 
         self.wl_surface.attach(Some(&self.buffer), 0, 0);
@@ -119,6 +119,7 @@ impl LayerSurfaceInfo {
         redraw_all: bool,
     ) {
         let cairoinfo = &self.cairo_t;
+        let frozen = self.frozen_bg.as_ref();
 
         let current_sel = {
             let rx1 = (start_pos_x - start_x as f64).min(end_pos.x - start_x as f64);
@@ -186,21 +187,20 @@ impl LayerSurfaceInfo {
             cairoinfo.rectangle(dx as f64, dy as f64, dw as f64, dh as f64);
             cairoinfo.clip();
         }
-        cairoinfo.set_operator(cairo::Operator::Source);
-        cairoinfo.set_source_rgba(
-            self.style.background_color.r,
-            self.style.background_color.g,
-            self.style.background_color.b,
-            self.style.background_color.a,
+        paint_background(
+            cairoinfo,
+            frozen,
+            self.style.background_color,
+            width,
+            height,
         );
-        cairoinfo.paint().unwrap();
-
         if !redraw_all {
             cairoinfo.restore().unwrap();
-
-            cairoinfo.set_operator(cairo::Operator::Source);
         }
-
+        cairoinfo.set_operator(match frozen {
+            Some(_) => cairo::Operator::Over,
+            None => cairo::Operator::Source,
+        });
         if let Some(boxes) = opt_boxes {
             for box_info in boxes {
                 let bstart_x = box_info.start_x - start_x as f64;
@@ -227,6 +227,15 @@ impl LayerSurfaceInfo {
         let relate_end_y = end_pos.y - start_y as f64;
         let rlwidth = relate_end_x - relate_start_x;
         let rlheight = relate_end_y - relate_start_y;
+
+        if let Some(frozen) = frozen {
+            cairoinfo.save().unwrap();
+            cairoinfo.rectangle(relate_start_x, relate_start_y, rlwidth, rlheight);
+            cairoinfo.clip();
+            paint_frozen_image(cairoinfo, frozen, width, height);
+            cairoinfo.restore().unwrap();
+            cairoinfo.set_operator(cairo::Operator::Over);
+        }
 
         cairoinfo.rectangle(relate_start_x, relate_start_y, rlwidth, rlheight);
         cairoinfo.set_source_rgba(
@@ -298,6 +307,7 @@ pub fn draw_ui(
     tmp: &mut File,
     (width, height): (i32, i32),
     background_color: crate::Color,
+    frozen_bg: Option<&cairo::ImageSurface>,
 ) -> UiInit {
     let cairo_fmt = Format::ARgb32;
     let stride = cairo_fmt.stride_for_width(width as u32).unwrap();
@@ -307,6 +317,30 @@ pub fn draw_ui(
     let surface =
         cairo::ImageSurface::create_for_data(mmmap, cairo_fmt, width, height, stride).unwrap();
     let cairoinfo = cairo::Context::new(&surface).unwrap();
+    paint_background(&cairoinfo, frozen_bg, background_color, width, height);
+    UiInit {
+        context: cairoinfo,
+        stride,
+    }
+}
+
+/// Paints the "resting" backdrop of a surface: either the plain
+/// `background_color`, or a screenshot taken before the
+/// selection UI was shown, dimmed by `background_color` on top of it.
+fn paint_background(
+    cairoinfo: &Context,
+    frozen_bg: Option<&cairo::ImageSurface>,
+    background_color: crate::Color,
+    width: i32,
+    height: i32,
+) {
+    match frozen_bg {
+        Some(frozen) => {
+            paint_frozen_image(cairoinfo, frozen, width, height);
+            cairoinfo.set_operator(cairo::Operator::Over);
+        }
+        None => cairoinfo.set_operator(cairo::Operator::Source),
+    }
     cairoinfo.set_source_rgba(
         background_color.r,
         background_color.g,
@@ -314,8 +348,19 @@ pub fn draw_ui(
         background_color.a,
     );
     cairoinfo.paint().unwrap();
-    UiInit {
-        context: cairoinfo,
-        stride,
+}
+
+/// Paints a frozen screenshot as an opaque backdrop, scaling it to fit
+/// `(width, height)` if its own dimensions don't match.
+fn paint_frozen_image(cairoinfo: &Context, frozen: &cairo::ImageSurface, width: i32, height: i32) {
+    let shot_w = frozen.width();
+    let shot_h = frozen.height();
+    cairoinfo.save().unwrap();
+    if shot_w != width || shot_h != height {
+        cairoinfo.scale(width as f64 / shot_w as f64, height as f64 / shot_h as f64);
     }
+    cairoinfo.set_operator(cairo::Operator::Source);
+    cairoinfo.set_source_surface(frozen, 0.0, 0.0).unwrap();
+    cairoinfo.paint().unwrap();
+    cairoinfo.restore().unwrap();
 }

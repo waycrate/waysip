@@ -33,8 +33,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install build dependencies
+        # TODO: rm `libdrm` and `mesa` post `libwayshot` 0.8.0 release
+        # see: https://github.com/waycrate/wayshot/pull/395
         run: |
-          pacman -Syu --noconfirm base-devel wayland cairo pango
+          pacman -Syu --noconfirm base-devel wayland cairo pango libdrm mesa
 
       - name: Build (${{ matrix.name }})
         run: cargo build ${{ matrix.cargo_args }}

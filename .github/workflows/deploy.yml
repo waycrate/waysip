@@ -25,8 +25,10 @@ jobs:
           components: clippy rustfmt
 
       - name: Install build dependencies
+        # TODO: rm `libdrm` and `mesa` post `libwayshot` 0.8.0 release
+        # see: https://github.com/waycrate/wayshot/pull/395
         run: |
-          pacman -Syu --noconfirm base-devel wayland cairo pango
+          pacman -Syu --noconfirm base-devel wayland cairo pango libdrm mesa
 
       - name: Build
         run: cargo build --release
@@ -52,7 +54,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          pacman -Syu --noconfirm base-devel wayland cairo pango
+          pacman -Syu --noconfirm base-devel wayland cairo pango libdrm mesa
 
       - name: Obtain crates.io token
         uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5

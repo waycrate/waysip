@@ -18,3 +18,5 @@ readme = "README.md"
 [workspace.dependencies]
 libwaysip = { version = "0.6.1", path = "./libwaysip", default-features = false }
 tracing = "0.1"
+cairo-rs = "0.22"
+wayland-client = "0.31"
