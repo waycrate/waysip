@@ -1,4 +1,6 @@
 mod cli;
+#[cfg(feature = "freeze")]
+mod freeze;
 #[cfg(feature = "logger")]
 mod logger;
 mod settings;

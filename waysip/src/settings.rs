@@ -116,8 +116,10 @@ pub(crate) fn run_selection(
     }
 
     #[cfg(feature = "freeze")]
-    if args.freeze {
-        builder = builder.with_freeze();
+    if args.freeze
+        && let Some(provider) = crate::freeze::capture_backgrounds()
+    {
+        builder = builder.with_background_provider(provider);
     }
 
     match builder.get() {
