@@ -20,12 +20,18 @@ logger = ["dep:tracing-subscriber"]
 completions = ["dep:clap_complete", "dep:clap_complete_nushell"]
 frame-limit = ["libwaysip/frame-limit"]
 benchmark = ["libwaysip/benchmark"]
-freeze = ["libwaysip/freeze"]
+# Captures a screenshot of each output (via `libwayshot`) and uses it as a
+# static backdrop while selecting, giving the effect of a frozen screen.
+freeze = ["dep:libwayshot", "dep:image", "dep:cairo-rs", "dep:wayland-client"]
 
 [dependencies]
+cairo-rs = { workspace = true, optional = true }
 clap = { version = "4.6", features = ["derive"] }
 clap_complete = { version = "4.6", optional = true }
 clap_complete_nushell = { version = "4.6", optional = true }
+image = { version = "0.25", optional = true, default-features = false }
 libwaysip.workspace = true
+libwayshot = { version = "0.8", optional = true, default-features = false }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", optional = true }
+wayland-client = { workspace = true, optional = true }
