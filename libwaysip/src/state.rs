@@ -35,6 +35,22 @@ pub enum SelectionType {
     DimensionsOrOutput,
 }
 
+/// Linux evdev keycode for the Enter key, used as the default hotkey to confirm
+/// a tweaked selection.
+pub(crate) const DEFAULT_CONFIRM_KEY: u32 = 28;
+
+/// Identifies one of the four corner drag-handles shown while tweaking a selection.
+/// Each variant names which of `start_pos`/`end_pos` (or combination of their axes)
+/// the handle controls, so dragging keeps working sensibly even if the rectangle
+/// gets flipped around during the drag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Corner {
+    Start,
+    End,
+    EndXStartY,
+    StartXEndY,
+}
+
 #[derive(Debug, Clone)]
 pub struct ZXdgOutputInfo {
     pub zxdg_output: zxdg_output_v1::ZxdgOutputV1,
@@ -192,6 +208,15 @@ pub struct WaysipState {
     /// Time when mouse was pressed down
     pub(crate) mouse_press_time: Option<std::time::Instant>,
     redraw_all: bool,
+    /// Whether the "tweak before confirming" feature is enabled
+    pub(crate) tweak_enabled: bool,
+    /// Keycode (evdev) that confirms a tweaked selection
+    pub(crate) confirm_key: u32,
+    /// Whether the initial drag has finished and the user is now free to tweak
+    /// the rectangle's corners before confirming
+    pub(crate) tweak_mode: bool,
+    /// The corner handle currently being dragged, if any
+    pub(crate) active_handle: Option<Corner>,
 }
 
 impl WaysipState {
@@ -219,6 +244,10 @@ impl WaysipState {
             effective_selection_type: None,
             mouse_press_time: None,
             redraw_all: false,
+            tweak_enabled: false,
+            confirm_key: DEFAULT_CONFIRM_KEY,
+            tweak_mode: false,
+            active_handle: None,
         }
     }
 
@@ -324,6 +353,78 @@ impl WaysipState {
         self.start_pos = Some(start_pos);
     }
 
+    pub(crate) fn corners(&self) -> Option<[(Corner, Position<f64>); 4]> {
+        let start = self.start_pos?;
+        let end = self.end_pos?;
+        Some([
+            (Corner::Start, start),
+            (Corner::End, end),
+            (
+                Corner::EndXStartY,
+                Position {
+                    x: end.x,
+                    y: start.y,
+                },
+            ),
+            (
+                Corner::StartXEndY,
+                Position {
+                    x: start.x,
+                    y: end.y,
+                },
+            ),
+        ])
+    }
+
+    pub(crate) fn hit_test_handle(&self, pos: Position<f64>) -> Option<Corner> {
+        const HIT_RADIUS: f64 = 14.0;
+        self.corners()?
+            .into_iter()
+            .map(|(corner, corner_pos)| {
+                let dx = corner_pos.x - pos.x;
+                let dy = corner_pos.y - pos.y;
+                (corner, (dx * dx + dy * dy).sqrt())
+            })
+            .filter(|(_, dist)| *dist <= HIT_RADIUS)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(corner, _)| corner)
+    }
+
+    pub(crate) fn apply_handle_drag(&mut self) {
+        let Some(corner) = self.active_handle else {
+            return;
+        };
+        let pos = self.current_pos;
+        match corner {
+            Corner::Start => self.start_pos = Some(pos),
+            Corner::End => self.end_pos = Some(pos),
+            Corner::EndXStartY => {
+                if let Some(end) = self.end_pos.as_mut() {
+                    end.x = pos.x;
+                }
+                if let Some(start) = self.start_pos.as_mut() {
+                    start.y = pos.y;
+                }
+            }
+            Corner::StartXEndY => {
+                if let Some(start) = self.start_pos.as_mut() {
+                    start.x = pos.x;
+                }
+                if let Some(end) = self.end_pos.as_mut() {
+                    end.y = pos.y;
+                }
+            }
+        }
+    }
+
+    pub(crate) fn finish_or_enter_tweak(&mut self) {
+        if self.tweak_enabled && self.is_effective_area() {
+            self.tweak_mode = true;
+        } else {
+            self.running = false;
+        }
+    }
+
     pub fn commit(&self) {
         let qh = self.qh.as_ref().unwrap();
         for (idx, surface) in self.wl_surfaces.iter().enumerate() {
@@ -405,6 +506,7 @@ impl WaysipState {
             let end_pos = self.end_pos.unwrap_or(start_pos);
             let draw_text =
                 self.is_area() || self.is_effective_area() || self.is_dimensions_or_output();
+            let show_handles = self.tweak_enabled && self.tweak_mode;
 
             self.wl_surfaces[screen_index].redraw(
                 start_pos,
@@ -414,6 +516,7 @@ impl WaysipState {
                 draw_text,
                 self.predefined_boxes.as_ref(),
                 self.redraw_all,
+                show_handles,
             );
         }
     }

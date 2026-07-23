@@ -200,8 +200,18 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_keyboard::Event::Key { key: 1, .. } = event {
-            state.running = false;
+        if let wl_keyboard::Event::Key {
+            key,
+            state: key_state,
+            ..
+        } = event
+        {
+            let confirm_pressed = state.tweak_mode
+                && key == state.confirm_key
+                && matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
+            if key == 1 || confirm_pressed {
+                state.running = false;
+            }
         }
     }
 }
@@ -219,32 +229,39 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
             wl_pointer::Event::Button { state, .. } => {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
-                        if dispatch_state.is_dimensions_or_output() {
-                            // Record the press time for detecting single click vs drag
-                            dispatch_state.mouse_press_time = Some(std::time::Instant::now());
-                        }
+                        if dispatch_state.tweak_mode {
+                            dispatch_state.active_handle =
+                                dispatch_state.hit_test_handle(dispatch_state.current_pos);
+                        } else {
+                            if dispatch_state.is_dimensions_or_output() {
+                                // Record the press time for detecting single click vs drag
+                                dispatch_state.mouse_press_time = Some(std::time::Instant::now());
+                            }
 
-                        #[cfg(feature = "benchmark")]
-                        if dispatch_state.bench
-                            && (dispatch_state.is_area()
-                                || dispatch_state.is_dimensions_or_output())
-                        {
-                            dispatch_state.timestamps_total.clear();
-                        }
+                            #[cfg(feature = "benchmark")]
+                            if dispatch_state.bench
+                                && (dispatch_state.is_area()
+                                    || dispatch_state.is_dimensions_or_output())
+                            {
+                                dispatch_state.timestamps_total.clear();
+                            }
 
-                        if !dispatch_state.is_predefined_boxes() {
-                            dispatch_state.set_start_pos(dispatch_state.current_pos);
-                        }
-                        if !dispatch_state.is_area()
-                            && !dispatch_state.is_predefined_boxes()
-                            && !dispatch_state.is_dimensions_or_output()
-                        {
-                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                            dispatch_state.running = false;
+                            if !dispatch_state.is_predefined_boxes() {
+                                dispatch_state.set_start_pos(dispatch_state.current_pos);
+                            }
+                            if !dispatch_state.is_area()
+                                && !dispatch_state.is_predefined_boxes()
+                                && !dispatch_state.is_dimensions_or_output()
+                            {
+                                dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                                dispatch_state.running = false;
+                            }
                         }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
-                        if dispatch_state.is_dimensions_or_output() {
+                        if dispatch_state.tweak_mode {
+                            dispatch_state.active_handle = None;
+                        } else if dispatch_state.is_dimensions_or_output() {
                             // Determine if this was a single click or drag
                             let is_single_click =
                                 if let Some(press_time) = dispatch_state.mouse_press_time {
@@ -289,10 +306,13 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                                     Some(crate::state::SelectionType::Area);
                                 dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             }
+                            dispatch_state.finish_or_enter_tweak();
                         } else if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.finish_or_enter_tweak();
+                        } else {
+                            dispatch_state.running = false;
                         }
-                        dispatch_state.running = false;
                     }
                     _ => {}
                 }
@@ -362,60 +382,68 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     x: surface_x + start_x as f64,
                     y: surface_y + start_y as f64,
                 };
-                dispatch_state.end_pos = None;
 
-                // NOTE:  when it is area, we just use one click to get the position, so we
-                // need to know the end_pos immediately. so even the start_pos is not decided, we
-                // still need an end_pos
-                if dispatch_state.is_area() || dispatch_state.is_dimensions_or_output() {
-                    if let Some(ratio) = dispatch_state.aspect_ratio {
-                        let width_rel = ratio.0;
-                        let height_rel = ratio.1;
-                        let start_pos = dispatch_state
-                            .start_pos
-                            .unwrap_or(dispatch_state.current_pos);
-                        let width = dispatch_state.current_pos.x - start_pos.x;
-                        let height = dispatch_state.current_pos.y - start_pos.y;
-                        if width_rel / height_rel > width / height {
-                            dispatch_state.end_pos = Some(Position {
-                                x: start_pos.x + height * width_rel / height_rel,
-                                y: start_pos.y + height,
-                            });
+                if dispatch_state.tweak_mode {
+                    if dispatch_state.active_handle.is_some() {
+                        dispatch_state.apply_handle_drag();
+                        dispatch_state.try_commit();
+                    }
+                } else {
+                    dispatch_state.end_pos = None;
+
+                    // NOTE:  when it is area, we just use one click to get the position, so we
+                    // need to know the end_pos immediately. so even the start_pos is not decided, we
+                    // still need an end_pos
+                    if dispatch_state.is_area() || dispatch_state.is_dimensions_or_output() {
+                        if let Some(ratio) = dispatch_state.aspect_ratio {
+                            let width_rel = ratio.0;
+                            let height_rel = ratio.1;
+                            let start_pos = dispatch_state
+                                .start_pos
+                                .unwrap_or(dispatch_state.current_pos);
+                            let width = dispatch_state.current_pos.x - start_pos.x;
+                            let height = dispatch_state.current_pos.y - start_pos.y;
+                            if width_rel / height_rel > width / height {
+                                dispatch_state.end_pos = Some(Position {
+                                    x: start_pos.x + height * width_rel / height_rel,
+                                    y: start_pos.y + height,
+                                });
+                            } else {
+                                dispatch_state.end_pos = Some(Position {
+                                    x: start_pos.x + width,
+                                    y: start_pos.y + width * height_rel / width_rel,
+                                });
+                            }
                         } else {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        }
+                        dispatch_state.try_commit();
+                    } else if dispatch_state.is_predefined_boxes() {
+                        let current_pos = dispatch_state.current_pos;
+                        if let Some(box_info) = dispatch_state
+                            .predefined_boxes
+                            .clone()
+                            .unwrap()
+                            .iter()
+                            .find(|box_info| {
+                                current_pos.x >= box_info.start_x
+                                    && current_pos.x <= box_info.end_x
+                                    && current_pos.y >= box_info.start_y
+                                    && current_pos.y <= box_info.end_y
+                            })
+                        {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.set_start_pos(Position {
+                                x: box_info.start_x,
+                                y: box_info.start_y,
+                            });
                             dispatch_state.end_pos = Some(Position {
-                                x: start_pos.x + width,
-                                y: start_pos.y + width * height_rel / width_rel,
+                                x: box_info.end_x,
+                                y: box_info.end_y,
                             });
                         }
-                    } else {
-                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        dispatch_state.try_commit();
                     }
-                    dispatch_state.try_commit();
-                } else if dispatch_state.is_predefined_boxes() {
-                    let current_pos = dispatch_state.current_pos;
-                    if let Some(box_info) = dispatch_state
-                        .predefined_boxes
-                        .clone()
-                        .unwrap()
-                        .iter()
-                        .find(|box_info| {
-                            current_pos.x >= box_info.start_x
-                                && current_pos.x <= box_info.end_x
-                                && current_pos.y >= box_info.start_y
-                                && current_pos.y <= box_info.end_y
-                        })
-                    {
-                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                        dispatch_state.set_start_pos(Position {
-                            x: box_info.start_x,
-                            y: box_info.start_y,
-                        });
-                        dispatch_state.end_pos = Some(Position {
-                            x: box_info.end_x,
-                            y: box_info.end_y,
-                        });
-                    }
-                    dispatch_state.try_commit();
                 }
             }
             _ => {}

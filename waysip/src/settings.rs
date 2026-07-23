@@ -110,6 +110,13 @@ pub(crate) fn run_selection(
         builder = builder.with_aspect_ratio(width, height);
     }
 
+    if args.tweak {
+        builder = builder.with_tweak();
+        if let Some(key) = args.tweak_key.take() {
+            builder = builder.with_confirm_key(key);
+        }
+    }
+
     #[cfg(feature = "benchmark")]
     if args.bench {
         builder = builder.with_bench();

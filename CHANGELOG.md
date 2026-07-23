@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Optional `freeze` feature and `--freeze` flag: freezes the screen while a selection is in progress.
+- `--tweak` flag: after making an area/dimensions selection, shows draggable handles on
+  the 4 corners so the rectangle can be adjusted before confirming with a hotkey
+  (Enter by default, configurable with `--tweak-key <keycode>`).
 
 ## [0.6.1] - 2026-03-24
 

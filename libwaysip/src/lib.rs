@@ -57,6 +57,8 @@ pub struct WaySip {
     #[cfg(feature = "benchmark")]
     bench: bool,
     background_provider: Option<BackgroundProvider>,
+    tweak: bool,
+    confirm_key: Option<u32>,
 }
 
 impl fmt::Debug for WaySip {
@@ -72,6 +74,8 @@ impl fmt::Debug for WaySip {
         debug.field("bench", &self.bench);
         debug
             .field("background_provider", &self.background_provider.is_some())
+            .field("tweak", &self.tweak)
+            .field("confirm_key", &self.confirm_key)
             .finish()
     }
 }
@@ -132,6 +136,23 @@ impl WaySip {
         self
     }
 
+    /// Enable "tweak before confirming": after the initial drag/click for an
+    /// area selection finishes, four draggable corner handles appear instead
+    /// of finishing immediately. The selection is confirmed by pressing the
+    /// confirm key (see [`WaySip::with_confirm_key`], Enter by default).
+    pub fn with_tweak(mut self) -> Self {
+        self.tweak = true;
+        self
+    }
+
+    /// Overrides the key (as a Linux evdev keycode) used to confirm a tweaked
+    /// selection. Defaults to Enter. Only has an effect when combined with
+    /// [`WaySip::with_tweak`].
+    pub fn with_confirm_key(mut self, key: u32) -> Self {
+        self.confirm_key = Some(key);
+        self
+    }
+
     #[cfg(feature = "benchmark")]
     pub fn with_bench(mut self) -> Self {
         self.bench = true;
@@ -167,6 +188,8 @@ impl WaySip {
                 #[cfg(feature = "benchmark")]
                 bench,
                 self.background_provider,
+                self.tweak,
+                self.confirm_key,
             ),
             None => {
                 let connection = Connection::connect_to_env()
@@ -181,12 +204,15 @@ impl WaySip {
                     #[cfg(feature = "benchmark")]
                     bench,
                     self.background_provider,
+                    self.tweak,
+                    self.confirm_key,
                 )
             }
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_area_inner(
     connection: &Connection,
     selection_type: SelectionType,
@@ -195,10 +221,17 @@ fn get_area_inner(
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")] bench: bool,
     background_provider: Option<BackgroundProvider>,
+    tweak: bool,
+    confirm_key: Option<u32>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
+
+    state.tweak_enabled = tweak;
+    if let Some(key) = confirm_key {
+        state.confirm_key = key;
+    }
 
     state.predefined_boxes = boxes;
     state.aspect_ratio = aspect_ratio;

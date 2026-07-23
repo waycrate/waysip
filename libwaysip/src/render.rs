@@ -117,6 +117,7 @@ impl LayerSurfaceInfo {
         draw_text: bool,
         opt_boxes: Option<&Vec<BoxInfo>>,
         redraw_all: bool,
+        show_handles: bool,
     ) {
         let cairoinfo = &self.cairo_t;
         let frozen = self.frozen_bg.as_ref();
@@ -129,7 +130,12 @@ impl LayerSurfaceInfo {
             [rx1, ry1, rx2, ry2]
         };
 
-        let border_margin = self.style.border_weight + 2.0;
+        let handle_radius = (self.style.border_weight * 3.0).max(5.0);
+        let border_margin = if show_handles {
+            (self.style.border_weight + 2.0).max(handle_radius + 2.0)
+        } else {
+            self.style.border_weight + 2.0
+        };
 
         let (text_margin_w, text_margin_h) = *self.margin.get_or_init(|| {
             if !draw_text {
@@ -253,6 +259,35 @@ impl LayerSurfaceInfo {
         );
         cairoinfo.set_line_width(self.style.border_weight);
         cairoinfo.stroke().unwrap();
+
+        if show_handles {
+            let handles = [
+                (relate_start_x, relate_start_y),
+                (relate_end_x, relate_start_y),
+                (relate_start_x, relate_end_y),
+                (relate_end_x, relate_end_y),
+            ];
+            for (hx, hy) in handles {
+                cairoinfo.save().unwrap();
+                cairoinfo.arc(hx, hy, handle_radius, 0.0, std::f64::consts::TAU);
+                cairoinfo.set_source_rgba(
+                    self.style.border_text_color.r,
+                    self.style.border_text_color.g,
+                    self.style.border_text_color.b,
+                    self.style.border_text_color.a,
+                );
+                cairoinfo.fill_preserve().unwrap();
+                cairoinfo.set_source_rgba(
+                    self.style.background_color.r,
+                    self.style.background_color.g,
+                    self.style.background_color.b,
+                    1.0,
+                );
+                cairoinfo.set_line_width(1.5);
+                cairoinfo.stroke().unwrap();
+                cairoinfo.restore().unwrap();
+            }
+        }
 
         if draw_text {
             let font_size = self.style.font_size;
