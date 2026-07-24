@@ -57,7 +57,7 @@ pub struct WaySip {
     #[cfg(feature = "benchmark")]
     bench: bool,
     background_provider: Option<BackgroundProvider>,
-    tweak: bool,
+    edit_selection: bool,
     confirm_key: Option<u32>,
 }
 
@@ -74,7 +74,7 @@ impl fmt::Debug for WaySip {
         debug.field("bench", &self.bench);
         debug
             .field("background_provider", &self.background_provider.is_some())
-            .field("tweak", &self.tweak)
+            .field("edit_selection", &self.edit_selection)
             .field("confirm_key", &self.confirm_key)
             .finish()
     }
@@ -136,18 +136,19 @@ impl WaySip {
         self
     }
 
-    /// Enable "tweak before confirming": after the initial drag/click for an
-    /// area selection finishes, four draggable corner handles appear instead
-    /// of finishing immediately. The selection is confirmed by pressing the
-    /// confirm key (see [`WaySip::with_confirm_key`], Enter by default).
-    pub fn with_tweak(mut self) -> Self {
-        self.tweak = true;
+    /// Enable "edit selection before confirming": after the initial drag/click
+    /// for an area selection finishes, four draggable corner handles appear
+    /// instead of finishing immediately. The selection is confirmed by
+    /// pressing the confirm key (see [`WaySip::with_confirm_key`], Enter by
+    /// default).
+    pub fn with_edit_selection(mut self) -> Self {
+        self.edit_selection = true;
         self
     }
 
-    /// Overrides the key (as a Linux evdev keycode) used to confirm a tweaked
+    /// Overrides the key (as a Linux evdev keycode) used to confirm an edited
     /// selection. Defaults to Enter. Only has an effect when combined with
-    /// [`WaySip::with_tweak`].
+    /// [`WaySip::with_edit_selection`].
     pub fn with_confirm_key(mut self, key: u32) -> Self {
         self.confirm_key = Some(key);
         self
@@ -188,7 +189,7 @@ impl WaySip {
                 #[cfg(feature = "benchmark")]
                 bench,
                 self.background_provider,
-                self.tweak,
+                self.edit_selection,
                 self.confirm_key,
             ),
             None => {
@@ -204,7 +205,7 @@ impl WaySip {
                     #[cfg(feature = "benchmark")]
                     bench,
                     self.background_provider,
-                    self.tweak,
+                    self.edit_selection,
                     self.confirm_key,
                 )
             }
@@ -221,14 +222,14 @@ fn get_area_inner(
     aspect_ratio: Option<(f64, f64)>,
     #[cfg(feature = "benchmark")] bench: bool,
     background_provider: Option<BackgroundProvider>,
-    tweak: bool,
+    edit_selection: bool,
     confirm_key: Option<u32>,
 ) -> Result<Option<state::AreaInfo>, WaySipError> {
     let (globals, _) = registry_queue_init::<state::WaysipState>(connection)
         .map_err(|e| WaySipError::InitFailed(e.to_string()))?;
     let mut state = state::WaysipState::new(selection_type);
 
-    state.tweak_enabled = tweak;
+    state.edit_enabled = edit_selection;
     if let Some(key) = confirm_key {
         state.confirm_key = key;
     }

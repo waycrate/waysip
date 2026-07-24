@@ -36,10 +36,10 @@ pub enum SelectionType {
 }
 
 /// Linux evdev keycode for the Enter key, used as the default hotkey to confirm
-/// a tweaked selection.
+/// an edited selection.
 pub(crate) const DEFAULT_CONFIRM_KEY: u32 = 28;
 
-/// Identifies one of the four corner drag-handles shown while tweaking a selection.
+/// Identifies one of the four corner drag-handles shown while editing a selection.
 /// Each variant names which of `start_pos`/`end_pos` (or combination of their axes)
 /// the handle controls, so dragging keeps working sensibly even if the rectangle
 /// gets flipped around during the drag.
@@ -208,13 +208,13 @@ pub struct WaysipState {
     /// Time when mouse was pressed down
     pub(crate) mouse_press_time: Option<std::time::Instant>,
     redraw_all: bool,
-    /// Whether the "tweak before confirming" feature is enabled
-    pub(crate) tweak_enabled: bool,
-    /// Keycode (evdev) that confirms a tweaked selection
+    /// Whether the "edit selection before confirming" feature is enabled
+    pub(crate) edit_enabled: bool,
+    /// Keycode (evdev) that confirms an edited selection
     pub(crate) confirm_key: u32,
-    /// Whether the initial drag has finished and the user is now free to tweak
+    /// Whether the initial drag has finished and the user is now free to edit
     /// the rectangle's corners before confirming
-    pub(crate) tweak_mode: bool,
+    pub(crate) editing: bool,
     /// The corner handle currently being dragged, if any
     pub(crate) active_handle: Option<Corner>,
 }
@@ -244,9 +244,9 @@ impl WaysipState {
             effective_selection_type: None,
             mouse_press_time: None,
             redraw_all: false,
-            tweak_enabled: false,
+            edit_enabled: false,
             confirm_key: DEFAULT_CONFIRM_KEY,
-            tweak_mode: false,
+            editing: false,
             active_handle: None,
         }
     }
@@ -417,9 +417,9 @@ impl WaysipState {
         }
     }
 
-    pub(crate) fn finish_or_enter_tweak(&mut self) {
-        if self.tweak_enabled && self.is_effective_area() {
-            self.tweak_mode = true;
+    pub(crate) fn finish_or_start_editing(&mut self) {
+        if self.edit_enabled && self.is_effective_area() {
+            self.editing = true;
         } else {
             self.running = false;
         }
@@ -506,7 +506,7 @@ impl WaysipState {
             let end_pos = self.end_pos.unwrap_or(start_pos);
             let draw_text =
                 self.is_area() || self.is_effective_area() || self.is_dimensions_or_output();
-            let show_handles = self.tweak_enabled && self.tweak_mode;
+            let show_handles = self.edit_enabled && self.editing;
 
             self.wl_surfaces[screen_index].redraw(
                 start_pos,

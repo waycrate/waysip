@@ -206,7 +206,7 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
             ..
         } = event
         {
-            let confirm_pressed = state.tweak_mode
+            let confirm_pressed = state.editing
                 && key == state.confirm_key
                 && matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
             if key == 1 || confirm_pressed {
@@ -229,7 +229,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
             wl_pointer::Event::Button { state, .. } => {
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
-                        if dispatch_state.tweak_mode {
+                        if dispatch_state.editing {
                             dispatch_state.active_handle =
                                 dispatch_state.hit_test_handle(dispatch_state.current_pos);
                         } else {
@@ -259,7 +259,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                         }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
-                        if dispatch_state.tweak_mode {
+                        if dispatch_state.editing {
                             dispatch_state.active_handle = None;
                         } else if dispatch_state.is_dimensions_or_output() {
                             // Determine if this was a single click or drag
@@ -306,10 +306,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                                     Some(crate::state::SelectionType::Area);
                                 dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             }
-                            dispatch_state.finish_or_enter_tweak();
+                            dispatch_state.finish_or_start_editing();
                         } else if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                            dispatch_state.finish_or_enter_tweak();
+                            dispatch_state.finish_or_start_editing();
                         } else {
                             dispatch_state.running = false;
                         }
@@ -383,7 +383,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     y: surface_y + start_y as f64,
                 };
 
-                if dispatch_state.tweak_mode {
+                if dispatch_state.editing {
                     if dispatch_state.active_handle.is_some() {
                         dispatch_state.apply_handle_drag();
                         dispatch_state.try_commit();

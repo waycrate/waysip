@@ -105,15 +105,15 @@ pub struct Cli {
     )]
     pub aspect_ratio: Option<String>,
 
-    /// Allow tweaking the selection (drag its 4 corner handles) before
-    /// confirming with the confirm key (Enter by default, see --tweak-key).
-    #[arg(long, conflicts_with_all = ["point", "screen", "boxes"])]
-    pub tweak: bool,
+    /// Adjust the selection (drag its 4 corner handles) before confirming
+    /// with the confirm key (Enter by default, see --edit-selection-key).
+    #[arg(short = 'e', long, conflicts_with_all = ["point", "screen", "boxes"])]
+    pub edit_selection: bool,
 
-    /// Linux evdev keycode used to confirm a tweaked selection. Defaults to
-    /// Enter (28). Only takes effect when combined with --tweak.
-    #[arg(long, value_name = "keycode", requires = "tweak")]
-    pub tweak_key: Option<u32>,
+    /// Linux evdev keycode used to confirm an edited selection. Defaults to
+    /// Enter (28). Only takes effect when combined with --edit-selection.
+    #[arg(long, value_name = "keycode", requires = "edit_selection")]
+    pub edit_selection_key: Option<u32>,
 
     // ─── Global options ───────────────────────────────────────────────────────
     /// Log level written to stderr.

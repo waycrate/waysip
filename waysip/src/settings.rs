@@ -110,9 +110,9 @@ pub(crate) fn run_selection(
         builder = builder.with_aspect_ratio(width, height);
     }
 
-    if args.tweak {
-        builder = builder.with_tweak();
-        if let Some(key) = args.tweak_key.take() {
+    if args.edit_selection {
+        builder = builder.with_edit_selection();
+        if let Some(key) = args.edit_selection_key.take() {
             builder = builder.with_confirm_key(key);
         }
     }

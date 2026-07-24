@@ -75,12 +75,12 @@ Freeze the screen while selecting, so the visible desktop stays static instead o
 waysip --freeze -d
 ```
 
-Tweak the selection before confirming it, like flameshot: drag out a rectangle, then adjust
-its 4 corner handles as needed, then press Enter (or the key set with `--tweak-key <keycode>`)
+Edit the selection before confirming it, like flameshot: drag out a rectangle, then adjust
+its 4 corner handles as needed, then press Enter (or the key set with `--edit-selection-key <keycode>`)
 to confirm:
 
 ```bash
-waysip -d --tweak
+waysip -d -e
 ```
 
 # Optional features
