@@ -238,6 +238,13 @@ pub struct WaysipState {
     pub(crate) active_handle: Option<DragTarget>,
     /// Snapshot used while dragging the rectangle body (see [`DragTarget::Body`])
     pub(crate) move_anchor: Option<MoveAnchor>,
+    /// Serial of the most recent `wl_pointer` enter/button event, needed to
+    /// change the cursor shape outside of those events (e.g. on motion)
+    pub(crate) last_pointer_serial: Option<u32>,
+    /// Whether the pointer's cursor is currently showing the crosshair shape
+    /// (as opposed to the default system cursor), used to avoid redundant
+    /// cursor-shape requests
+    pub(crate) cursor_is_crosshair: Option<bool>,
 }
 
 impl WaysipState {
@@ -270,6 +277,8 @@ impl WaysipState {
             editing: false,
             active_handle: None,
             move_anchor: None,
+            last_pointer_serial: None,
+            cursor_is_crosshair: None,
         }
     }
 

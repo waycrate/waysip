@@ -226,7 +226,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
         qh: &wayland_client::QueueHandle<Self>,
     ) {
         match event {
-            wl_pointer::Event::Button { state, .. } => {
+            wl_pointer::Event::Button { serial, state, .. } => {
+                dispatch_state.last_pointer_serial = Some(serial);
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
                         if dispatch_state.editing {
@@ -329,22 +330,13 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 surface_x,
                 surface_y,
             } => {
-                let Some(LayerSurfaceInfo {
-                    cursor_surface,
-                    cursor_buffer,
-                    ..
-                }) = dispatch_state
-                    .wl_surfaces
-                    .iter()
-                    .find(|info| info.wl_surface == surface)
-                else {
-                    return;
-                };
-                let current_screen = dispatch_state
+                let Some(current_screen) = dispatch_state
                     .wl_surfaces
                     .iter()
                     .position(|info| info.wl_surface == surface)
-                    .unwrap();
+                else {
+                    return;
+                };
                 dispatch_state.current_screen = current_screen;
                 let info =
                     dispatch_state.wloutput_infos[dispatch_state.current_screen].xdg_output_info();
@@ -355,22 +347,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     y: surface_y + start_y as f64,
                 };
 
-                if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
-                    let device = cursor_manager.get_pointer(pointer, qh, ());
-                    device.set_shape(serial, wp_cursor_shape_device_v1::Shape::Crosshair);
-                    device.destroy();
-                } else {
-                    let cursor_buffer = cursor_buffer.as_ref().unwrap();
-                    cursor_surface.attach(Some(cursor_buffer), 0, 0);
-                    let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
-                    pointer.set_cursor(
-                        serial,
-                        Some(cursor_surface),
-                        hotspot_x as i32,
-                        hotspot_y as i32,
-                    );
-                    cursor_surface.commit();
-                }
+                dispatch_state.last_pointer_serial = Some(serial);
+                // Force a fresh cursor-shape request since we just entered the surface.
+                dispatch_state.cursor_is_crosshair = None;
+                apply_cursor_shape(dispatch_state, pointer, qh, serial);
 
                 dispatch_state.try_commit();
             }
@@ -387,6 +367,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     x: surface_x + start_x as f64,
                     y: surface_y + start_y as f64,
                 };
+
+                if let Some(serial) = dispatch_state.last_pointer_serial {
+                    apply_cursor_shape(dispatch_state, pointer, qh, serial);
+                }
 
                 if dispatch_state.editing {
                     if dispatch_state.active_handle.is_some() {
@@ -453,6 +437,70 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
             }
             _ => {}
         }
+    }
+}
+
+/// Sets the pointer's cursor shape: a crosshair while making the initial
+/// selection, over a corner handle, or while dragging the rectangle body;
+/// the regular system cursor otherwise (e.g. hovering elsewhere over the
+/// screen while editing a selection).
+fn apply_cursor_shape(
+    dispatch_state: &mut WaysipState,
+    pointer: &wl_pointer::WlPointer,
+    qh: &wayland_client::QueueHandle<WaysipState>,
+    serial: u32,
+) {
+    let crosshair = !dispatch_state.editing
+        || dispatch_state.active_handle.is_some()
+        || dispatch_state
+            .hit_test(dispatch_state.current_pos)
+            .is_some();
+
+    if dispatch_state.cursor_is_crosshair == Some(crosshair) {
+        return;
+    }
+    dispatch_state.cursor_is_crosshair = Some(crosshair);
+
+    if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
+        let device = cursor_manager.get_pointer(pointer, qh, ());
+        let shape = if crosshair {
+            wp_cursor_shape_device_v1::Shape::Crosshair
+        } else {
+            wp_cursor_shape_device_v1::Shape::Default
+        };
+        device.set_shape(serial, shape);
+        device.destroy();
+        return;
+    }
+
+    // Fallback path for compositors without the cursor-shape protocol: attach
+    // a themed crosshair cursor image, or clear the cursor entirely (which
+    // makes the compositor show its own default cursor) otherwise.
+    if crosshair {
+        let Some(LayerSurfaceInfo {
+            cursor_surface,
+            cursor_buffer,
+            ..
+        }) = dispatch_state
+            .wl_surfaces
+            .get(dispatch_state.current_screen)
+        else {
+            return;
+        };
+        let Some(cursor_buffer) = cursor_buffer.as_ref() else {
+            return;
+        };
+        cursor_surface.attach(Some(cursor_buffer), 0, 0);
+        let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
+        pointer.set_cursor(
+            serial,
+            Some(cursor_surface),
+            hotspot_x as i32,
+            hotspot_y as i32,
+        );
+        cursor_surface.commit();
+    } else {
+        pointer.set_cursor(serial, None, 0, 0);
     }
 }
 
