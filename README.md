@@ -76,8 +76,8 @@ waysip --freeze -d
 ```
 
 Edit the selection before confirming it, like flameshot: drag out a rectangle, then adjust
-its 4 corner handles as needed, then press Enter (or the key set with `--edit-selection-key <keycode>`)
-to confirm:
+its 4 corner handles as needed (or drag anywhere inside it to move the whole rectangle),
+then press Enter (or the key set with `--edit-selection-key <keycode>`) to confirm:
 
 ```bash
 waysip -d -e

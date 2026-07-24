@@ -231,7 +231,11 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
                         if dispatch_state.editing {
                             dispatch_state.active_handle =
-                                dispatch_state.hit_test_handle(dispatch_state.current_pos);
+                                dispatch_state.hit_test(dispatch_state.current_pos);
+                            if dispatch_state.active_handle == Some(crate::state::DragTarget::Body)
+                            {
+                                dispatch_state.begin_move_drag();
+                            }
                         } else {
                             if dispatch_state.is_dimensions_or_output() {
                                 // Record the press time for detecting single click vs drag
@@ -261,6 +265,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
                         if dispatch_state.editing {
                             dispatch_state.active_handle = None;
+                            dispatch_state.move_anchor = None;
                         } else if dispatch_state.is_dimensions_or_output() {
                             // Determine if this was a single click or drag
                             let is_single_click =

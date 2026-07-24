@@ -39,16 +39,35 @@ pub enum SelectionType {
 /// an edited selection.
 pub(crate) const DEFAULT_CONFIRM_KEY: u32 = 28;
 
-/// Identifies one of the four corner drag-handles shown while editing a selection.
-/// Each variant names which of `start_pos`/`end_pos` (or combination of their axes)
-/// the handle controls, so dragging keeps working sensibly even if the rectangle
-/// gets flipped around during the drag.
+/// Identifies what is being dragged while editing a selection: either one of
+/// the four corner handles, or the whole rectangle.
+/// Each corner variant names which of `start_pos`/`end_pos` (or combination of
+/// their axes) the handle controls, so dragging keeps working sensibly even if
+/// the rectangle gets flipped around during the drag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DragTarget {
+    Corner(Corner),
+    /// The interior of the rectangle: dragging it moves the whole selection.
+    Body,
+}
+
+/// One of the four corner handles of the selection rectangle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Corner {
     Start,
     End,
     EndXStartY,
     StartXEndY,
+}
+
+/// Snapshot taken when the user starts dragging the whole rectangle (as
+/// opposed to a single corner handle), so the rectangle can be translated by
+/// the mouse movement delta without drifting.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct MoveAnchor {
+    pub grab_pos: Position<f64>,
+    pub start_pos: Position<f64>,
+    pub end_pos: Position<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -215,8 +234,10 @@ pub struct WaysipState {
     /// Whether the initial drag has finished and the user is now free to edit
     /// the rectangle's corners before confirming
     pub(crate) editing: bool,
-    /// The corner handle currently being dragged, if any
-    pub(crate) active_handle: Option<Corner>,
+    /// The corner handle or rectangle body currently being dragged, if any
+    pub(crate) active_handle: Option<DragTarget>,
+    /// Snapshot used while dragging the rectangle body (see [`DragTarget::Body`])
+    pub(crate) move_anchor: Option<MoveAnchor>,
 }
 
 impl WaysipState {
@@ -248,6 +269,7 @@ impl WaysipState {
             confirm_key: DEFAULT_CONFIRM_KEY,
             editing: false,
             active_handle: None,
+            move_anchor: None,
         }
     }
 
@@ -390,15 +412,61 @@ impl WaysipState {
             .map(|(corner, _)| corner)
     }
 
+    /// Same as [`Self::hit_test_handle`], but wraps the result in
+    /// [`DragTarget::Corner`] for use alongside [`DragTarget::Body`].
+    fn hit_test_corner_handle(&self, pos: Position<f64>) -> Option<DragTarget> {
+        self.hit_test_handle(pos).map(DragTarget::Corner)
+    }
+
+    /// Returns whether `pos` is inside the current selection rectangle
+    /// (regardless of which of `start_pos`/`end_pos` is visually top-left).
+    fn contains(&self, pos: Position<f64>) -> bool {
+        let Some(start) = self.start_pos else {
+            return false;
+        };
+        let Some(end) = self.end_pos else {
+            return false;
+        };
+        let (x1, x2) = (start.x.min(end.x), start.x.max(end.x));
+        let (y1, y2) = (start.y.min(end.y), start.y.max(end.y));
+        pos.x >= x1 && pos.x <= x2 && pos.y >= y1 && pos.y <= y2
+    }
+
+    /// Finds what dragging at `pos` should affect: a corner handle if close
+    /// enough to one, otherwise a whole-rectangle move if `pos` is inside the
+    /// selection, otherwise `None`.
+    pub(crate) fn hit_test(&self, pos: Position<f64>) -> Option<DragTarget> {
+        self.hit_test_corner_handle(pos).or_else(|| {
+            if self.contains(pos) {
+                Some(DragTarget::Body)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Records the starting point of a whole-rectangle drag so it can be
+    /// translated by the mouse movement delta without drifting.
+    pub(crate) fn begin_move_drag(&mut self) {
+        let (Some(start_pos), Some(end_pos)) = (self.start_pos, self.end_pos) else {
+            return;
+        };
+        self.move_anchor = Some(MoveAnchor {
+            grab_pos: self.current_pos,
+            start_pos,
+            end_pos,
+        });
+    }
+
     pub(crate) fn apply_handle_drag(&mut self) {
-        let Some(corner) = self.active_handle else {
+        let Some(target) = self.active_handle else {
             return;
         };
         let pos = self.current_pos;
-        match corner {
-            Corner::Start => self.start_pos = Some(pos),
-            Corner::End => self.end_pos = Some(pos),
-            Corner::EndXStartY => {
+        match target {
+            DragTarget::Corner(Corner::Start) => self.start_pos = Some(pos),
+            DragTarget::Corner(Corner::End) => self.end_pos = Some(pos),
+            DragTarget::Corner(Corner::EndXStartY) => {
                 if let Some(end) = self.end_pos.as_mut() {
                     end.x = pos.x;
                 }
@@ -406,13 +474,28 @@ impl WaysipState {
                     start.y = pos.y;
                 }
             }
-            Corner::StartXEndY => {
+            DragTarget::Corner(Corner::StartXEndY) => {
                 if let Some(start) = self.start_pos.as_mut() {
                     start.x = pos.x;
                 }
                 if let Some(end) = self.end_pos.as_mut() {
                     end.y = pos.y;
                 }
+            }
+            DragTarget::Body => {
+                let Some(anchor) = self.move_anchor else {
+                    return;
+                };
+                let dx = pos.x - anchor.grab_pos.x;
+                let dy = pos.y - anchor.grab_pos.y;
+                self.start_pos = Some(Position {
+                    x: anchor.start_pos.x + dx,
+                    y: anchor.start_pos.y + dy,
+                });
+                self.end_pos = Some(Position {
+                    x: anchor.end_pos.x + dx,
+                    y: anchor.end_pos.y + dy,
+                });
             }
         }
     }
