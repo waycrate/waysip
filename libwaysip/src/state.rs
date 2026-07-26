@@ -35,6 +35,41 @@ pub enum SelectionType {
     DimensionsOrOutput,
 }
 
+/// Linux evdev keycode for the Enter key, used as the default hotkey to confirm
+/// an edited selection.
+pub(crate) const DEFAULT_CONFIRM_KEY: u32 = 28;
+
+/// Identifies what is being dragged while editing a selection: either one of
+/// the four corner handles, or the whole rectangle.
+/// Each corner variant names which of `start_pos`/`end_pos` (or combination of
+/// their axes) the handle controls, so dragging keeps working sensibly even if
+/// the rectangle gets flipped around during the drag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DragTarget {
+    Corner(Corner),
+    /// The interior of the rectangle: dragging it moves the whole selection.
+    Body,
+}
+
+/// One of the four corner handles of the selection rectangle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Corner {
+    Start,
+    End,
+    EndXStartY,
+    StartXEndY,
+}
+
+/// Snapshot taken when the user starts dragging the whole rectangle (as
+/// opposed to a single corner handle), so the rectangle can be translated by
+/// the mouse movement delta without drifting.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct MoveAnchor {
+    pub grab_pos: Position<f64>,
+    pub start_pos: Position<f64>,
+    pub end_pos: Position<f64>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ZXdgOutputInfo {
     pub zxdg_output: zxdg_output_v1::ZxdgOutputV1,
@@ -192,6 +227,24 @@ pub struct WaysipState {
     /// Time when mouse was pressed down
     pub(crate) mouse_press_time: Option<std::time::Instant>,
     redraw_all: bool,
+    /// Whether the "edit selection before confirming" feature is enabled
+    pub(crate) edit_enabled: bool,
+    /// Keycode (evdev) that confirms an edited selection
+    pub(crate) confirm_key: u32,
+    /// Whether the initial drag has finished and the user is now free to edit
+    /// the rectangle's corners before confirming
+    pub(crate) editing: bool,
+    /// The corner handle or rectangle body currently being dragged, if any
+    pub(crate) active_handle: Option<DragTarget>,
+    /// Snapshot used while dragging the rectangle body (see [`DragTarget::Body`])
+    pub(crate) move_anchor: Option<MoveAnchor>,
+    /// Serial of the most recent `wl_pointer` enter/button event, needed to
+    /// change the cursor shape outside of those events (e.g. on motion)
+    pub(crate) last_pointer_serial: Option<u32>,
+    /// Whether the pointer's cursor is currently showing the crosshair shape
+    /// (as opposed to the default system cursor), used to avoid redundant
+    /// cursor-shape requests
+    pub(crate) cursor_is_crosshair: Option<bool>,
 }
 
 impl WaysipState {
@@ -219,6 +272,13 @@ impl WaysipState {
             effective_selection_type: None,
             mouse_press_time: None,
             redraw_all: false,
+            edit_enabled: false,
+            confirm_key: DEFAULT_CONFIRM_KEY,
+            editing: false,
+            active_handle: None,
+            move_anchor: None,
+            last_pointer_serial: None,
+            cursor_is_crosshair: None,
         }
     }
 
@@ -324,6 +384,139 @@ impl WaysipState {
         self.start_pos = Some(start_pos);
     }
 
+    pub(crate) fn corners(&self) -> Option<[(Corner, Position<f64>); 4]> {
+        let start = self.start_pos?;
+        let end = self.end_pos?;
+        Some([
+            (Corner::Start, start),
+            (Corner::End, end),
+            (
+                Corner::EndXStartY,
+                Position {
+                    x: end.x,
+                    y: start.y,
+                },
+            ),
+            (
+                Corner::StartXEndY,
+                Position {
+                    x: start.x,
+                    y: end.y,
+                },
+            ),
+        ])
+    }
+
+    pub(crate) fn hit_test_handle(&self, pos: Position<f64>) -> Option<Corner> {
+        const HIT_RADIUS: f64 = 14.0;
+        self.corners()?
+            .into_iter()
+            .map(|(corner, corner_pos)| {
+                let dx = corner_pos.x - pos.x;
+                let dy = corner_pos.y - pos.y;
+                (corner, (dx * dx + dy * dy).sqrt())
+            })
+            .filter(|(_, dist)| *dist <= HIT_RADIUS)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(corner, _)| corner)
+    }
+
+    /// Same as [`Self::hit_test_handle`], but wraps the result in
+    /// [`DragTarget::Corner`] for use alongside [`DragTarget::Body`].
+    fn hit_test_corner_handle(&self, pos: Position<f64>) -> Option<DragTarget> {
+        self.hit_test_handle(pos).map(DragTarget::Corner)
+    }
+
+    /// Returns whether `pos` is inside the current selection rectangle
+    /// (regardless of which of `start_pos`/`end_pos` is visually top-left).
+    fn contains(&self, pos: Position<f64>) -> bool {
+        let Some(start) = self.start_pos else {
+            return false;
+        };
+        let Some(end) = self.end_pos else {
+            return false;
+        };
+        let (x1, x2) = (start.x.min(end.x), start.x.max(end.x));
+        let (y1, y2) = (start.y.min(end.y), start.y.max(end.y));
+        pos.x >= x1 && pos.x <= x2 && pos.y >= y1 && pos.y <= y2
+    }
+
+    /// Finds what dragging at `pos` should affect: a corner handle if close
+    /// enough to one, otherwise a whole-rectangle move if `pos` is inside the
+    /// selection, otherwise `None`.
+    pub(crate) fn hit_test(&self, pos: Position<f64>) -> Option<DragTarget> {
+        self.hit_test_corner_handle(pos).or_else(|| {
+            if self.contains(pos) {
+                Some(DragTarget::Body)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Records the starting point of a whole-rectangle drag so it can be
+    /// translated by the mouse movement delta without drifting.
+    pub(crate) fn begin_move_drag(&mut self) {
+        let (Some(start_pos), Some(end_pos)) = (self.start_pos, self.end_pos) else {
+            return;
+        };
+        self.move_anchor = Some(MoveAnchor {
+            grab_pos: self.current_pos,
+            start_pos,
+            end_pos,
+        });
+    }
+
+    pub(crate) fn apply_handle_drag(&mut self) {
+        let Some(target) = self.active_handle else {
+            return;
+        };
+        let pos = self.current_pos;
+        match target {
+            DragTarget::Corner(Corner::Start) => self.start_pos = Some(pos),
+            DragTarget::Corner(Corner::End) => self.end_pos = Some(pos),
+            DragTarget::Corner(Corner::EndXStartY) => {
+                if let Some(end) = self.end_pos.as_mut() {
+                    end.x = pos.x;
+                }
+                if let Some(start) = self.start_pos.as_mut() {
+                    start.y = pos.y;
+                }
+            }
+            DragTarget::Corner(Corner::StartXEndY) => {
+                if let Some(start) = self.start_pos.as_mut() {
+                    start.x = pos.x;
+                }
+                if let Some(end) = self.end_pos.as_mut() {
+                    end.y = pos.y;
+                }
+            }
+            DragTarget::Body => {
+                let Some(anchor) = self.move_anchor else {
+                    return;
+                };
+                let dx = pos.x - anchor.grab_pos.x;
+                let dy = pos.y - anchor.grab_pos.y;
+                self.start_pos = Some(Position {
+                    x: anchor.start_pos.x + dx,
+                    y: anchor.start_pos.y + dy,
+                });
+                self.end_pos = Some(Position {
+                    x: anchor.end_pos.x + dx,
+                    y: anchor.end_pos.y + dy,
+                });
+            }
+        }
+    }
+
+    pub(crate) fn finish_or_start_editing(&mut self) {
+        if self.edit_enabled && self.is_effective_area() {
+            self.editing = true;
+        } else {
+            self.running = false;
+        }
+    }
+
     pub fn commit(&self) {
         let qh = self.qh.as_ref().unwrap();
         for (idx, surface) in self.wl_surfaces.iter().enumerate() {
@@ -405,6 +598,7 @@ impl WaysipState {
             let end_pos = self.end_pos.unwrap_or(start_pos);
             let draw_text =
                 self.is_area() || self.is_effective_area() || self.is_dimensions_or_output();
+            let show_handles = self.edit_enabled && self.editing;
 
             self.wl_surfaces[screen_index].redraw(
                 start_pos,
@@ -414,6 +608,7 @@ impl WaysipState {
                 draw_text,
                 self.predefined_boxes.as_ref(),
                 self.redraw_all,
+                show_handles,
             );
         }
     }

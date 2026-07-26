@@ -75,6 +75,14 @@ Freeze the screen while selecting, so the visible desktop stays static instead o
 waysip --freeze -d
 ```
 
+Edit the selection before confirming it, like flameshot: drag out a rectangle, then adjust
+its 4 corner handles as needed (or drag anywhere inside it to move the whole rectangle),
+then press Enter (or the key set with `--edit-selection-key <keycode>`) to confirm:
+
+```bash
+waysip -d -e
+```
+
 # Optional features
 
 All features except `benchmark` and `freeze` are enabled in the default build. To reduce binary size or compile-time dependencies, features can be selectively disabled, or `freeze` can be opted into:

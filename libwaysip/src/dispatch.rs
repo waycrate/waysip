@@ -200,8 +200,18 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let wl_keyboard::Event::Key { key: 1, .. } = event {
-            state.running = false;
+        if let wl_keyboard::Event::Key {
+            key,
+            state: key_state,
+            ..
+        } = event
+        {
+            let confirm_pressed = state.editing
+                && key == state.confirm_key
+                && matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
+            if key == 1 || confirm_pressed {
+                state.running = false;
+            }
         }
     }
 }
@@ -216,35 +226,48 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
         qh: &wayland_client::QueueHandle<Self>,
     ) {
         match event {
-            wl_pointer::Event::Button { state, .. } => {
+            wl_pointer::Event::Button { serial, state, .. } => {
+                dispatch_state.last_pointer_serial = Some(serial);
                 match state {
                     WEnum::Value(wl_pointer::ButtonState::Pressed) => {
-                        if dispatch_state.is_dimensions_or_output() {
-                            // Record the press time for detecting single click vs drag
-                            dispatch_state.mouse_press_time = Some(std::time::Instant::now());
-                        }
+                        if dispatch_state.editing {
+                            dispatch_state.active_handle =
+                                dispatch_state.hit_test(dispatch_state.current_pos);
+                            if dispatch_state.active_handle == Some(crate::state::DragTarget::Body)
+                            {
+                                dispatch_state.begin_move_drag();
+                            }
+                        } else {
+                            if dispatch_state.is_dimensions_or_output() {
+                                // Record the press time for detecting single click vs drag
+                                dispatch_state.mouse_press_time = Some(std::time::Instant::now());
+                            }
 
-                        #[cfg(feature = "benchmark")]
-                        if dispatch_state.bench
-                            && (dispatch_state.is_area()
-                                || dispatch_state.is_dimensions_or_output())
-                        {
-                            dispatch_state.timestamps_total.clear();
-                        }
+                            #[cfg(feature = "benchmark")]
+                            if dispatch_state.bench
+                                && (dispatch_state.is_area()
+                                    || dispatch_state.is_dimensions_or_output())
+                            {
+                                dispatch_state.timestamps_total.clear();
+                            }
 
-                        if !dispatch_state.is_predefined_boxes() {
-                            dispatch_state.set_start_pos(dispatch_state.current_pos);
-                        }
-                        if !dispatch_state.is_area()
-                            && !dispatch_state.is_predefined_boxes()
-                            && !dispatch_state.is_dimensions_or_output()
-                        {
-                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                            dispatch_state.running = false;
+                            if !dispatch_state.is_predefined_boxes() {
+                                dispatch_state.set_start_pos(dispatch_state.current_pos);
+                            }
+                            if !dispatch_state.is_area()
+                                && !dispatch_state.is_predefined_boxes()
+                                && !dispatch_state.is_dimensions_or_output()
+                            {
+                                dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                                dispatch_state.running = false;
+                            }
                         }
                     }
                     WEnum::Value(wl_pointer::ButtonState::Released) => {
-                        if dispatch_state.is_dimensions_or_output() {
+                        if dispatch_state.editing {
+                            dispatch_state.active_handle = None;
+                            dispatch_state.move_anchor = None;
+                        } else if dispatch_state.is_dimensions_or_output() {
                             // Determine if this was a single click or drag
                             let is_single_click =
                                 if let Some(press_time) = dispatch_state.mouse_press_time {
@@ -289,10 +312,13 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                                     Some(crate::state::SelectionType::Area);
                                 dispatch_state.end_pos = Some(dispatch_state.current_pos);
                             }
+                            dispatch_state.finish_or_start_editing();
                         } else if !dispatch_state.is_predefined_boxes() {
                             dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.finish_or_start_editing();
+                        } else {
+                            dispatch_state.running = false;
                         }
-                        dispatch_state.running = false;
                     }
                     _ => {}
                 }
@@ -304,22 +330,13 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                 surface_x,
                 surface_y,
             } => {
-                let Some(LayerSurfaceInfo {
-                    cursor_surface,
-                    cursor_buffer,
-                    ..
-                }) = dispatch_state
-                    .wl_surfaces
-                    .iter()
-                    .find(|info| info.wl_surface == surface)
-                else {
-                    return;
-                };
-                let current_screen = dispatch_state
+                let Some(current_screen) = dispatch_state
                     .wl_surfaces
                     .iter()
                     .position(|info| info.wl_surface == surface)
-                    .unwrap();
+                else {
+                    return;
+                };
                 dispatch_state.current_screen = current_screen;
                 let info =
                     dispatch_state.wloutput_infos[dispatch_state.current_screen].xdg_output_info();
@@ -330,22 +347,10 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     y: surface_y + start_y as f64,
                 };
 
-                if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
-                    let device = cursor_manager.get_pointer(pointer, qh, ());
-                    device.set_shape(serial, wp_cursor_shape_device_v1::Shape::Crosshair);
-                    device.destroy();
-                } else {
-                    let cursor_buffer = cursor_buffer.as_ref().unwrap();
-                    cursor_surface.attach(Some(cursor_buffer), 0, 0);
-                    let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
-                    pointer.set_cursor(
-                        serial,
-                        Some(cursor_surface),
-                        hotspot_x as i32,
-                        hotspot_y as i32,
-                    );
-                    cursor_surface.commit();
-                }
+                dispatch_state.last_pointer_serial = Some(serial);
+                // Force a fresh cursor-shape request since we just entered the surface.
+                dispatch_state.cursor_is_crosshair = None;
+                apply_cursor_shape(dispatch_state, pointer, qh, serial);
 
                 dispatch_state.try_commit();
             }
@@ -362,64 +367,140 @@ impl Dispatch<wl_pointer::WlPointer, ()> for state::WaysipState {
                     x: surface_x + start_x as f64,
                     y: surface_y + start_y as f64,
                 };
-                dispatch_state.end_pos = None;
 
-                // NOTE:  when it is area, we just use one click to get the position, so we
-                // need to know the end_pos immediately. so even the start_pos is not decided, we
-                // still need an end_pos
-                if dispatch_state.is_area() || dispatch_state.is_dimensions_or_output() {
-                    if let Some(ratio) = dispatch_state.aspect_ratio {
-                        let width_rel = ratio.0;
-                        let height_rel = ratio.1;
-                        let start_pos = dispatch_state
-                            .start_pos
-                            .unwrap_or(dispatch_state.current_pos);
-                        let width = dispatch_state.current_pos.x - start_pos.x;
-                        let height = dispatch_state.current_pos.y - start_pos.y;
-                        if width_rel / height_rel > width / height {
-                            dispatch_state.end_pos = Some(Position {
-                                x: start_pos.x + height * width_rel / height_rel,
-                                y: start_pos.y + height,
-                            });
+                if let Some(serial) = dispatch_state.last_pointer_serial {
+                    apply_cursor_shape(dispatch_state, pointer, qh, serial);
+                }
+
+                if dispatch_state.editing {
+                    if dispatch_state.active_handle.is_some() {
+                        dispatch_state.apply_handle_drag();
+                        dispatch_state.try_commit();
+                    }
+                } else {
+                    dispatch_state.end_pos = None;
+
+                    // NOTE:  when it is area, we just use one click to get the position, so we
+                    // need to know the end_pos immediately. so even the start_pos is not decided, we
+                    // still need an end_pos
+                    if dispatch_state.is_area() || dispatch_state.is_dimensions_or_output() {
+                        if let Some(ratio) = dispatch_state.aspect_ratio {
+                            let width_rel = ratio.0;
+                            let height_rel = ratio.1;
+                            let start_pos = dispatch_state
+                                .start_pos
+                                .unwrap_or(dispatch_state.current_pos);
+                            let width = dispatch_state.current_pos.x - start_pos.x;
+                            let height = dispatch_state.current_pos.y - start_pos.y;
+                            if width_rel / height_rel > width / height {
+                                dispatch_state.end_pos = Some(Position {
+                                    x: start_pos.x + height * width_rel / height_rel,
+                                    y: start_pos.y + height,
+                                });
+                            } else {
+                                dispatch_state.end_pos = Some(Position {
+                                    x: start_pos.x + width,
+                                    y: start_pos.y + width * height_rel / width_rel,
+                                });
+                            }
                         } else {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        }
+                        dispatch_state.try_commit();
+                    } else if dispatch_state.is_predefined_boxes() {
+                        let current_pos = dispatch_state.current_pos;
+                        if let Some(box_info) = dispatch_state
+                            .predefined_boxes
+                            .clone()
+                            .unwrap()
+                            .iter()
+                            .find(|box_info| {
+                                current_pos.x >= box_info.start_x
+                                    && current_pos.x <= box_info.end_x
+                                    && current_pos.y >= box_info.start_y
+                                    && current_pos.y <= box_info.end_y
+                            })
+                        {
+                            dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                            dispatch_state.set_start_pos(Position {
+                                x: box_info.start_x,
+                                y: box_info.start_y,
+                            });
                             dispatch_state.end_pos = Some(Position {
-                                x: start_pos.x + width,
-                                y: start_pos.y + width * height_rel / width_rel,
+                                x: box_info.end_x,
+                                y: box_info.end_y,
                             });
                         }
-                    } else {
-                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
+                        dispatch_state.try_commit();
                     }
-                    dispatch_state.try_commit();
-                } else if dispatch_state.is_predefined_boxes() {
-                    let current_pos = dispatch_state.current_pos;
-                    if let Some(box_info) = dispatch_state
-                        .predefined_boxes
-                        .clone()
-                        .unwrap()
-                        .iter()
-                        .find(|box_info| {
-                            current_pos.x >= box_info.start_x
-                                && current_pos.x <= box_info.end_x
-                                && current_pos.y >= box_info.start_y
-                                && current_pos.y <= box_info.end_y
-                        })
-                    {
-                        dispatch_state.end_pos = Some(dispatch_state.current_pos);
-                        dispatch_state.set_start_pos(Position {
-                            x: box_info.start_x,
-                            y: box_info.start_y,
-                        });
-                        dispatch_state.end_pos = Some(Position {
-                            x: box_info.end_x,
-                            y: box_info.end_y,
-                        });
-                    }
-                    dispatch_state.try_commit();
                 }
             }
             _ => {}
         }
+    }
+}
+
+/// Sets the pointer's cursor shape: a crosshair while making the initial
+/// selection, over a corner handle, or while dragging the rectangle body;
+/// the regular system cursor otherwise (e.g. hovering elsewhere over the
+/// screen while editing a selection).
+fn apply_cursor_shape(
+    dispatch_state: &mut WaysipState,
+    pointer: &wl_pointer::WlPointer,
+    qh: &wayland_client::QueueHandle<WaysipState>,
+    serial: u32,
+) {
+    let crosshair = !dispatch_state.editing
+        || dispatch_state.active_handle.is_some()
+        || dispatch_state
+            .hit_test(dispatch_state.current_pos)
+            .is_some();
+
+    if dispatch_state.cursor_is_crosshair == Some(crosshair) {
+        return;
+    }
+    dispatch_state.cursor_is_crosshair = Some(crosshair);
+
+    if let Some(ref cursor_manager) = dispatch_state.cursor_manager {
+        let device = cursor_manager.get_pointer(pointer, qh, ());
+        let shape = if crosshair {
+            wp_cursor_shape_device_v1::Shape::Crosshair
+        } else {
+            wp_cursor_shape_device_v1::Shape::Default
+        };
+        device.set_shape(serial, shape);
+        device.destroy();
+        return;
+    }
+
+    // Fallback path for compositors without the cursor-shape protocol: attach
+    // a themed crosshair cursor image, or clear the cursor entirely (which
+    // makes the compositor show its own default cursor) otherwise.
+    if crosshair {
+        let Some(LayerSurfaceInfo {
+            cursor_surface,
+            cursor_buffer,
+            ..
+        }) = dispatch_state
+            .wl_surfaces
+            .get(dispatch_state.current_screen)
+        else {
+            return;
+        };
+        let Some(cursor_buffer) = cursor_buffer.as_ref() else {
+            return;
+        };
+        cursor_surface.attach(Some(cursor_buffer), 0, 0);
+        let (hotspot_x, hotspot_y) = cursor_buffer.hotspot();
+        pointer.set_cursor(
+            serial,
+            Some(cursor_surface),
+            hotspot_x as i32,
+            hotspot_y as i32,
+        );
+        cursor_surface.commit();
+    } else {
+        pointer.set_cursor(serial, None, 0, 0);
     }
 }
 
