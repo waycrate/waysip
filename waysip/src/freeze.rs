@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use wayland_client::protocol::wl_output::WlOutput;
+use wayland_client::protocol::wl_output::{Transform, WlOutput};
 
 /// Takes a screenshot of every output up front and returns a
 /// [`libwaysip::BackgroundProvider`]-compatible closure that looks up the
@@ -34,6 +34,10 @@ pub fn capture_backgrounds()
                 continue;
             }
         };
+        // `screenshot_single_output` returns the raw, un-rotated buffer
+        // (always "landscape"); apply the output's transform ourselves so
+        // portrait/rotated outputs aren't rendered squashed or sideways.
+        let image = rotate_image(image, output_info.transform);
         match image_to_argb_surface(image) {
             Some(surface) => {
                 backgrounds.insert(output_info.name.clone(), surface);
@@ -48,6 +52,27 @@ pub fn capture_backgrounds()
     }
 
     Some(move |_wl_output: &WlOutput, name: &str| backgrounds.get(name).cloned())
+}
+
+/// Rotates/flips a raw screencopy buffer to account for the output's
+/// transform.
+fn rotate_image(image: image::DynamicImage, transform: Transform) -> image::DynamicImage {
+    match transform {
+        Transform::_90 => image::imageops::rotate90(&image).into(),
+        Transform::_180 => image::imageops::rotate180(&image).into(),
+        Transform::_270 => image::imageops::rotate270(&image).into(),
+        Transform::Flipped => image::imageops::flip_horizontal(&image).into(),
+        Transform::Flipped90 => {
+            image::imageops::rotate90(&image::imageops::flip_horizontal(&image)).into()
+        }
+        Transform::Flipped180 => {
+            image::imageops::rotate180(&image::imageops::flip_horizontal(&image)).into()
+        }
+        Transform::Flipped270 => {
+            image::imageops::rotate270(&image::imageops::flip_horizontal(&image)).into()
+        }
+        _ => image,
+    }
 }
 
 /// Converts an [`image::DynamicImage`] into a premultiplied-alpha
