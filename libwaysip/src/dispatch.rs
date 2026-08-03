@@ -206,10 +206,13 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for state::WaysipState {
             ..
         } = event
         {
-            let confirm_pressed = state.editing
-                && key == state.confirm_key
-                && matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
-            if key == 1 || confirm_pressed {
+            let pressed = matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
+            if key == 1 && pressed {
+                // Esc: abort, discarding any selection drawn so far
+                state.start_pos = None;
+                state.end_pos = None;
+                state.running = false;
+            } else if state.editing && key == state.confirm_key && pressed {
                 state.running = false;
             }
         }
