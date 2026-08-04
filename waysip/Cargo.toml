@@ -31,7 +31,7 @@ clap_complete = { version = "4.6", optional = true }
 clap_complete_nushell = { version = "4.6", optional = true }
 image = { version = "0.25", optional = true, default-features = false }
 libwaysip.workspace = true
-libwayshot = { version = "0.8", optional = true, default-features = false }
+libwayshot = { version = "0.9", optional = true, default-features = false }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", optional = true }
 wayland-client = { workspace = true, optional = true }
