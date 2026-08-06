@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "libwaysip"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "cairo-rs",
  "memmap2",
@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "waysip"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "cairo-rs",
  "clap",
