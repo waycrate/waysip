@@ -4,6 +4,8 @@ mod freeze;
 #[cfg(feature = "logger")]
 mod logger;
 mod settings;
+#[cfg(test)]
+mod tests;
 mod utils;
 
 use clap::Parser;
