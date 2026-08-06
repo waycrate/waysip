@@ -226,7 +226,7 @@ pub struct WaysipState {
     pub(crate) effective_selection_type: Option<SelectionType>,
     /// Time when mouse was pressed down
     pub(crate) mouse_press_time: Option<std::time::Instant>,
-    redraw_all: bool,
+    pub(crate) redraw_all: bool,
     /// Whether the "edit selection before confirming" feature is enabled
     pub(crate) edit_enabled: bool,
     /// Keycode (evdev) that confirms an edited selection

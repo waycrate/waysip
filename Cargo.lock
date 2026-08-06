@@ -478,6 +478,7 @@ dependencies = [
  "pangocairo",
  "tempfile",
  "thiserror",
+ "wayland-backend",
  "wayland-client",
  "wayland-cursor",
  "wayland-protocols",
@@ -1031,6 +1032,7 @@ dependencies = [
  "libwaysip",
  "tracing",
  "tracing-subscriber",
+ "wayland-backend",
  "wayland-client",
 ]
 
