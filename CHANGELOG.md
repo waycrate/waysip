@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Added
 
 - optional **`benchmark`** feature for profiling the render/dispatch loop by [@id3v1669](https://github.com/id3v1669) in [#120](https://github.com/waycrate/waysip/pull/120).
+- unit test suite covering `dispatch`, `state`, `render`, `utils` and the crate root, bringing coverage to ~80% by [@Gigas002](https://github.com/Gigas002) in [#128](https://github.com/waycrate/waysip/pull/128).
 
 #### Changed
 
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - optional **`freeze`** feature and **`--freeze`** flag: freezes the screen while a selection is in progress by [@Gigas002](https://github.com/Gigas002) in [#123](https://github.com/waycrate/waysip/pull/123).
 - **`--edit-selection`** / **`-e`** flag: after making an area/dimensions selection, shows draggable handles on the 4 corners so the rectangle can be adjusted before confirming with a hotkey (Enter by default, configurable with **`--edit-selection-key <keycode>`**); the whole rectangle can also be dragged from its interior to move it by [@Gigas002](https://github.com/Gigas002) in [#124](https://github.com/waycrate/waysip/pull/124).
 - optional **`logger`** feature exposing a **`--log-level`** flag, and optional **`completions`** feature exposing **`--completions <SHELL>`** for shell completion generation by [@Gigas002](https://github.com/Gigas002) in [#116](https://github.com/waycrate/waysip/pull/116).
+- unit test suite for `cli`, `freeze`, `settings` and `utils`, plus a `cli_integration` test binary, bringing coverage to ~80% by [@Gigas002](https://github.com/Gigas002) in [#128](https://github.com/waycrate/waysip/pull/128).
 
 #### Changed
 
@@ -35,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fixed
 
 - <kbd>Esc</kbd> now cancels an in-progress edit-selection drag instead of confirming it by [@Gigas002](https://github.com/Gigas002) in [#126](https://github.com/waycrate/waysip/pull/126).
+
+### Infra
+
+- new `test-coverage` CI workflow that runs the test suite against a headless `sway` session by [@Gigas002](https://github.com/Gigas002) in [#128](https://github.com/waycrate/waysip/pull/128).
 
 [0.7.0]: https://github.com/waycrate/waysip/compare/v0.6.1...v0.7.0
 
