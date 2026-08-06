@@ -35,3 +35,6 @@ pangocairo = "0.22"
 
 memmap2 = "0.9"
 thiserror = "2.0"
+
+[dev-dependencies]
+wayland-backend = "0.3"

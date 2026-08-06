@@ -52,7 +52,7 @@ pub fn capture_backgrounds()
 
 /// Converts an [`image::DynamicImage`] into a premultiplied-alpha
 /// `cairo::ImageSurface` (`ARgb32`) suitable for use as a paint source.
-fn image_to_argb_surface(image: image::DynamicImage) -> Option<cairo::ImageSurface> {
+pub(crate) fn image_to_argb_surface(image: image::DynamicImage) -> Option<cairo::ImageSurface> {
     let rgba = image.to_rgba8();
     let width = rgba.width() as i32;
     let height = rgba.height() as i32;

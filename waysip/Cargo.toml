@@ -35,3 +35,7 @@ libwayshot = { version = "0.9", optional = true, default-features = false }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", optional = true }
 wayland-client = { workspace = true, optional = true }
+
+[dev-dependencies]
+wayland-backend = "0.3"
+wayland-client.workspace = true

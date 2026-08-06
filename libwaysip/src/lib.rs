@@ -3,6 +3,8 @@ mod render;
 
 pub mod error;
 pub mod state;
+#[cfg(test)]
+mod tests;
 mod utils;
 pub use utils::*;
 
