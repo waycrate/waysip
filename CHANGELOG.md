@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-06
+
 ### libwaysip
 
 #### Added
@@ -33,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fixed
 
 - <kbd>Esc</kbd> now cancels an in-progress edit-selection drag instead of confirming it by [@Gigas002](https://github.com/Gigas002) in [#126](https://github.com/waycrate/waysip/pull/126).
+
+[0.7.0]: https://github.com/waycrate/waysip/compare/v0.6.1...v0.7.0
 
 ## [0.6.1] - 2026-03-24
 
@@ -258,4 +262,4 @@ Initial release.
 - CI (GitHub Actions) and a Nix development flake for building the workspace by [@Shinyzenith](https://github.com/Shinyzenith) in [`d2db6b9`](https://github.com/waycrate/waysip/commit/d2db6b9f77024a51afc50d3ea2d125ef1290722b) and [`960abd7`](https://github.com/waycrate/waysip/commit/960abd7fc1154e607c784f9d8c2dc94cfb3531ea).
 
 [0.1.1]: https://github.com/waycrate/waysip/releases/tag/v0.1.1
-[Unreleased]: https://github.com/waycrate/waysip/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/waycrate/waysip/compare/v0.7.0...HEAD

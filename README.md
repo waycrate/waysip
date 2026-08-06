@@ -3,7 +3,7 @@
 
   <p align="center">
   <a href="./LICENSE.md"><img src="https://img.shields.io/github/license/waycrate/waysip?style=flat-square&logo=appveyor"></a>
-  <img src="https://img.shields.io/badge/cargo-v0.6.1-green?style=flat-square&logo=appveyor">
+  <img src="https://img.shields.io/badge/cargo-v0.7.0-green?style=flat-square&logo=appveyor">
   <img src="https://img.shields.io/github/issues/waycrate/waysip?style=flat-square&logo=appveyor">
   <img src="https://img.shields.io/github/forks/waycrate/waysip?style=flat-square&logo=appveyor">
   <img src="https://img.shields.io/github/stars/waycrate/waysip?style=flat-square&logo=appveyor">
