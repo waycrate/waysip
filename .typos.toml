@@ -1,2 +1,6 @@
 [files]
 extend-exclude = ["**/*.cmake", "**/*.json"]
+
+[default.extend-words]
+# false positive: substring of the commit hash `960abd7` in CHANGELOG.md
+abd = "abd"
