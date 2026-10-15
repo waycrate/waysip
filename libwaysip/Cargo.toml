@@ -15,7 +15,7 @@ frame-limit = []
 benchmark = []
 
 [dependencies]
-tempfile = "3.27"
+rustix = { version = "1.1", features = ["fs"] }
 wayland-client.workspace = true
 wayland-cursor = "0.31"
 
@@ -37,4 +37,5 @@ memmap2 = "0.9"
 thiserror = "2.0"
 
 [dev-dependencies]
+tempfile = "3.27"
 wayland-backend = "0.3"

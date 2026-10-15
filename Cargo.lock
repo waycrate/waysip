@@ -476,6 +476,7 @@ dependencies = [
  "memmap2",
  "pango",
  "pangocairo",
+ "rustix",
  "tempfile",
  "thiserror",
  "wayland-backend",

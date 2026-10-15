@@ -333,7 +333,9 @@ fn get_area_inner(
             .as_ref()
             .and_then(|provider| provider(wloutput.get_output(), wloutput.get_name()));
 
-        let mut file = tempfile::tempfile().unwrap();
+        let mut file = rustix::fs::memfd_create("waysip", rustix::fs::MemfdFlags::CLOEXEC)
+            .unwrap()
+            .into();
         let UiInit {
             context: cairo_t,
             stride,
