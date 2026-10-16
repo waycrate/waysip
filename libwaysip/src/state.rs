@@ -332,7 +332,9 @@ impl WaysipState {
         if surface_info.buffer_busy {
             return;
         }
-        let mut file = tempfile::tempfile().unwrap();
+        let mut file = rustix::fs::memfd_create("waysip", rustix::fs::MemfdFlags::CLOEXEC)
+            .unwrap()
+            .into();
         let qh = self.qh.as_ref().unwrap();
         let width = width as i32;
         let height = height as i32;
