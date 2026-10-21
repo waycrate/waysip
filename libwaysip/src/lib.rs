@@ -322,7 +322,7 @@ fn get_area_inner(
         );
         layer.set_anchor(Anchor::all());
         layer.set_exclusive_zone(-1);
-        layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
+        layer.set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive);
         layer.set_size(init_w as u32, init_h as u32);
 
         wl_surface.commit(); // so during the init Configure of the shell, a buffer, at least a buffer is needed.
