@@ -2,7 +2,7 @@
 name = "libwaysip"
 description = "Wayland native (zwlr_layer_shell) area selection client lib"
 authors.workspace = true
-version.workspace = true
+version = "0.7.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
