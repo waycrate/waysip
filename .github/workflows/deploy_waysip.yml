@@ -3,7 +3,7 @@ name: Deploy waysip
 on:
   push:
     tags:
-      - "waysip-v*"
+      - "v*-waysip"
 
 env:
   CARGO_TERM_COLOR: always

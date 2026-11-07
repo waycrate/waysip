@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.1-libwaysip] - 2026-11-07
+
+### libwaysip
+
+#### Fixed
+- Fix: ensure shm buffer is in-memory by @saghen
+- Fix: switch to exclusive keyboard interactivity by @saghen
+
+[0.7.1-libwaysip]: https://github.com/waycrate/waysip/compare/v0.7.1-libwaysip...v0.7.0
 
 ## [0.7.0] - 2026-08-06
 
